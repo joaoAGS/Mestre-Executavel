@@ -20,6 +20,43 @@ VERSAO_ATUAL = "1.2"
 URL_VERSAO = "https://raw.githubusercontent.com/joaoAGS/Mestre-Executavel/refs/heads/main/versao.txt"
 URL_EXECUTAVEL = "https://github.com/joaoAGS/Mestre-Executavel/raw/refs/heads/main/Mestre.exe"
 
+
+# ==============================================================================
+# ⚙️ CONFIGURAÇÕES E VERIAVEIS GLOBAIS
+# ==============================================================================
+
+VERSAO_ATUAL = "1.2"
+URL_VERSAO = "https://raw.githubusercontent.com/joaoAGS/Mestre-Executavel/refs/heads/main/versao.txt"
+URL_EXECUTAVEL = "https://github.com/joaoAGS/Mestre-Executavel/raw/refs/heads/main/Mestre.exe"
+
+
+URL_DASHBOARD = "https://paineladmin3.azurewebsites.net/mobfy/dashboard"
+URL_MAPA = "https://paineladmin3.azurewebsites.net/mobfy/vermapa"
+URL_WHATSAPP = "https://web.whatsapp.com"
+
+# --- NOMES DO WHATSAPP (Edite aqui) ---
+NOME_GRUPO_WHATSAPP = "MOBFY Avisos CAÇADOR"    # Para alertas de Offline e Frota
+
+# --- LISTA DE QUEM RECEBE O RELATÓRIO DE CORRIDAS ---
+# Adicione ou remova nomes entre aspas, separados por vírgula
+LISTA_CORRIDAS = ["Matheus Wichmann", "Mobfy Canal"]
+
+# --- INTERVALOS (Minutos) ---
+TEMPO_OFFLINE = 3      # Verifica offline (Aba 2)
+TEMPO_FROTA = 15        # Relatório geral de cores (Aba 1)
+TEMPO_CORRIDAS = 30    # Relatório dashboard (Aba 0)
+
+# Se estiver rodando como .exe, usa o caminho do executável. Se for script, usa o local do arquivo.
+if getattr(sys, 'frozen', False):
+    diretorio_base = os.path.dirname(sys.executable)
+else:
+    diretorio_base = os.path.dirname(os.path.abspath(__file__))
+
+CAMINHO_PERFIL = os.path.join(diretorio_base, "perfil_chrome")
+
+# ==============================================================================
+# 🛠️ FUNÇÕES DE SUPORTE
+# ==============================================================================
 def verificar_atualizacao():
     print(f"🔍 Verificando atualizações... (Versão {VERSAO_ATUAL})")
     try:
@@ -70,41 +107,7 @@ def verificar_atualizacao():
     except Exception as e:
         print(f"⚠️ Erro ao verificar atualização: {e}")
         # Continua o robô normalmente se der erro na internet
-
-
-
-# ==============================================================================
-# ⚙️ CONFIGURAÇÕES
-# ==============================================================================
-
-URL_DASHBOARD = "https://paineladmin3.azurewebsites.net/mobfy/dashboard"
-URL_MAPA = "https://paineladmin3.azurewebsites.net/mobfy/vermapa"
-URL_WHATSAPP = "https://web.whatsapp.com"
-
-# --- NOMES DO WHATSAPP (Edite aqui) ---
-NOME_GRUPO_WHATSAPP = "MOBFY Avisos CAÇADOR"    # Para alertas de Offline e Frota
-
-# --- LISTA DE QUEM RECEBE O RELATÓRIO DE CORRIDAS ---
-# Adicione ou remova nomes entre aspas, separados por vírgula
-LISTA_CORRIDAS = ["Matheus Wichmann", "Mobfy Canal"]
-
-# --- INTERVALOS (Minutos) ---
-TEMPO_OFFLINE = 3      # Verifica offline (Aba 2)
-TEMPO_FROTA = 15        # Relatório geral de cores (Aba 1)
-TEMPO_CORRIDAS = 30    # Relatório dashboard (Aba 0)
-
-# Se estiver rodando como .exe, usa o caminho do executável. Se for script, usa o local do arquivo.
-if getattr(sys, 'frozen', False):
-    diretorio_base = os.path.dirname(sys.executable)
-else:
-    diretorio_base = os.path.dirname(os.path.abspath(__file__))
-
-CAMINHO_PERFIL = os.path.join(diretorio_base, "perfil_chrome")
-
-# ==============================================================================
-# 🛠️ FUNÇÕES DE SUPORTE
-# ==============================================================================
-
+        
 def iniciar_driver():
     print("🚀 Iniciando Robô Mestre (Com Cálculo de Perdas)...")
     options = webdriver.ChromeOptions()
@@ -348,6 +351,9 @@ def tarefa_corridas(driver):
 # 🔄 LOOP PRINCIPAL
 # ==============================================================================
 if __name__ == "__main__":
+    
+    verificar_atualizacao()
+    
     if not os.path.exists(CAMINHO_PERFIL):
         os.makedirs(CAMINHO_PERFIL)
         
