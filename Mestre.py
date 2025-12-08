@@ -17,7 +17,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 # ==============================================================================
 
 # --- AUTO-UPDATE ---
-VERSAO_ATUAL = "1.3"
+VERSAO_ATUAL = "1.4"
 URL_VERSAO = "https://raw.githubusercontent.com/joaoAGS/Mestre-Executavel/refs/heads/main/versao.txt"
 URL_EXECUTAVEL = "https://github.com/joaoAGS/Mestre-Executavel/raw/refs/heads/main/Mestre.exe"
 
