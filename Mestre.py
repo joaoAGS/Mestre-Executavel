@@ -16,8 +16,8 @@ from webdriver_manager.chrome import ChromeDriverManager
 # ⚙️ CONFIGURAÇÕES
 # ==============================================================================
 
-# --- AUTO-UPDATE (LINKS) ---
-VERSAO_ATUAL = "1.2"
+# --- AUTO-UPDATE ---
+VERSAO_ATUAL = "1.6"  # <--- LEMBRE DE MUDAR ISSO QUANDO GERAR ATUALIZAÇÃO
 URL_VERSAO = "https://raw.githubusercontent.com/joaoAGS/Mestre-Executavel/refs/heads/main/versao.txt"
 URL_EXECUTAVEL = "https://github.com/joaoAGS/Mestre-Executavel/raw/refs/heads/main/Mestre.exe"
 
@@ -34,7 +34,8 @@ TEMPO_OFFLINE = 3
 TEMPO_FROTA = 15
 TEMPO_CORRIDAS = 30
 
-# --- CONFIGURAÇÃO DE PASTA (Compatível com .exe e .py) ---
+# --- CONFIGURAÇÃO DE PASTA ROBUSTA ---
+# Define onde o executável está rodando para não errar o caminho
 if getattr(sys, 'frozen', False):
     diretorio_base = os.path.dirname(sys.executable)
     exe_atual = sys.executable
@@ -45,41 +46,58 @@ else:
 CAMINHO_PERFIL = os.path.join(diretorio_base, "perfil_chrome")
 
 # ==============================================================================
-# 🔄 FUNÇÃO DE ATUALIZAÇÃO (CORRIGIDA)
+# 🔄 FUNÇÃO DE ATUALIZAÇÃO (MODO SILENCIOSO E FORÇADO)
 # ==============================================================================
 def verificar_atualizacao():
     print(f"🔍 Verificando atualizações... (Versão Atual: {VERSAO_ATUAL})")
     try:
-        # Evita erro SSL em redes corporativas
+        # Verifica versão sem verificar SSL (evita erro em algumas redes)
         resposta = requests.get(URL_VERSAO, verify=False)
         versao_online = resposta.text.strip()
         
+        # Se a versão online for diferente e não estiver vazia
         if versao_online != VERSAO_ATUAL and versao_online != "":
-            print(f"🚀 Nova versão encontrada: {versao_online}! Baixando...")
+            print(f"🚀 Nova versão encontrada: {versao_online}! Baixando atualização...")
             
+            # Baixa o novo executável
             resposta_exe = requests.get(URL_EXECUTAVEL, verify=False)
             
-            # Define caminhos seguros
+            # Define o nome temporário
             nome_novo = os.path.join(diretorio_base, "Mestre_Novo.exe")
             
-            # Salva o novo arquivo
+            # Salva o arquivo no disco
             with open(nome_novo, 'wb') as f:
                 f.write(resposta_exe.content)
             
-            print("✅ Download concluído! Reiniciando para aplicar...")
+            print("✅ Download concluído! O robô vai reiniciar em 5 segundos...")
             
-            # CRIA O SCRIPT BAT MAIS ROBUSTO (Usa MOVE /Y para forçar)
+            # ---------------------------------------------------------
+            # O SEGREDO DO SUCESSO: SCRIPT BAT BLINDADO
+            # ---------------------------------------------------------
+            # 1. Espera 3 segundos
+            # 2. Tenta mover o arquivo novo para o lugar do velho
+            # 3. Se der erro (arquivo preso), tenta de novo (loop)
+            # 4. Inicia o novo robô
+            # 5. Se deleta
+            
+            nome_exe_original = os.path.basename(exe_atual)
+            
             bat_script = f"""
             @echo off
-            echo Aguardando fechamento do robo...
+            title Atualizando Robo...
+            echo Aguardando fechamento do aplicativo...
             timeout /t 3 /nobreak >nul
             
-            echo Substituindo arquivos...
+            :TENTAR_MOVER
             move /y "{nome_novo}" "{exe_atual}"
+            if errorlevel 1 (
+                echo Arquivo ainda preso. Tentando de novo em 1 seg...
+                timeout /t 1 /nobreak >nul
+                goto TENTAR_MOVER
+            )
             
-            echo Reiniciando...
+            echo Atualizacao concluida! Iniciando...
             start "" "{exe_atual}"
-            
             del "%~f0"
             """
             
@@ -87,15 +105,16 @@ def verificar_atualizacao():
             with open(bat_path, "w") as bat:
                 bat.write(bat_script)
                 
-            # Executa o BAT e encerra o Python imediatamente
+            # Roda o atualizador e MATA o processo atual imediatamente
             subprocess.Popen(bat_path, shell=True)
-            sys.exit()
+            time.sleep(1)
+            sys.exit() # Fecha o robô atual para liberar o arquivo
             
         else:
             print("✅ Seu robô está atualizado.")
             
     except Exception as e:
-        print(f"⚠️ Erro no Update (Ignorando): {e}")
+        print(f"⚠️ Erro ao tentar atualizar (O robô vai continuar normal): {e}")
         time.sleep(2)
 
 # ==============================================================================
@@ -110,7 +129,7 @@ def iniciar_driver():
     options.add_argument("--disable-dev-shm-usage")
     options.add_experimental_option('excludeSwitches', ['enable-logging'])
     
-    # Busca Chrome automaticamente
+    # Busca Chrome em locais padrões
     locais = [
         r"C:\Program Files\Google\Chrome\Application\chrome.exe",
         r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
@@ -127,13 +146,18 @@ def iniciar_driver():
 def enviar_whatsapp(driver, mensagem, destinatario):
     try:
         driver.switch_to.window(driver.window_handles[3])
-        if "WhatsApp" not in driver.title:
+        # Se cair a conexão, tenta voltar
+        try:
+            if "WhatsApp" not in driver.title:
+                driver.get(URL_WHATSAPP)
+                time.sleep(15)
+        except:
             driver.get(URL_WHATSAPP)
-            time.sleep(10)
+            time.sleep(15)
 
         wait = WebDriverWait(driver, 40)
         
-        # Busca
+        # Busca Contato
         try:
             box = wait.until(EC.element_to_be_clickable((By.XPATH, '//div[@contenteditable="true"][@data-tab="3"]')))
             box.click()
@@ -143,17 +167,24 @@ def enviar_whatsapp(driver, mensagem, destinatario):
             time.sleep(2)
             box.send_keys(Keys.ENTER)
         except:
-            print(f"❌ '{destinatario}' não achado.")
+            print(f"❌ '{destinatario}' não encontrado.")
             return
 
-        # Envia
+        # Envia Texto
         chat = wait.until(EC.presence_of_element_located((By.XPATH, '//footer//div[@contenteditable="true"]')))
         chat.click()
         time.sleep(1)
         pyperclip.copy(mensagem)
         chat.send_keys(Keys.CONTROL, 'v')
         time.sleep(1)
-        chat.send_keys(Keys.ENTER)
+        
+        # Clica no botão enviar ou Enter
+        try:
+            btn = driver.find_element(By.XPATH, "//span[@data-icon='send']")
+            driver.execute_script("arguments[0].click();", btn)
+        except:
+            chat.send_keys(Keys.ENTER)
+            
         print(f"✅ Enviado: {destinatario}")
         time.sleep(2)
         
@@ -266,15 +297,16 @@ def tarefa_corridas(driver):
 # ==============================================================================
 if __name__ == "__main__":
     
-    # Se rodar como .exe, verifica update
+    # 1. VERIFICA ATUALIZAÇÃO (Só se for .exe para evitar bagunça no teste)
     if getattr(sys, 'frozen', False):
         verificar_atualizacao()
 
+    # 2. CONFIGURA PASTA E MATA CHROME ANTIGO
     if not os.path.exists(CAMINHO_PERFIL):
         os.makedirs(CAMINHO_PERFIL)
-        
     os.system("taskkill /F /IM chrome.exe /T >nul 2>&1")
     
+    # 3. INICIA TUDO
     driver = iniciar_driver()
     
     # Abre abas
@@ -291,7 +323,10 @@ if __name__ == "__main__":
     time.sleep(60)
     print("🤖 ROBÔ RODANDO!")
 
-    t_off = t_frota = t_corr = 0
+    # Agendamento
+    t_off = 0
+    t_frota = 0
+    t_corr = 0
     
     while True:
         agora = time.time()
