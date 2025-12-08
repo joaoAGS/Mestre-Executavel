@@ -1,0 +1,14 @@
+2025/12/03-11:56:41.517 501c Creating DB C:\Users\samuel.oliveira\Desktop\GG-Samuka\Bot_Perfil_Mestre_V3\Default\Local Storage\leveldb since it was missing.
+2025/12/03-11:56:41.621 501c Reusing MANIFEST C:\Users\samuel.oliveira\Desktop\GG-Samuka\Bot_Perfil_Mestre_V3\Default\Local Storage\leveldb/MANIFEST-000001
+2025/12/03-12:29:14.785 35c8 Level-0 table #5: started
+2025/12/03-12:29:14.792 35c8 Level-0 table #5: 23452 bytes OK
+2025/12/03-12:29:14.794 35c8 Delete type=0 #3
+2025/12/03-13:53:59.029 35c8 Level-0 table #7: started
+2025/12/03-13:53:59.038 35c8 Level-0 table #7: 15221 bytes OK
+2025/12/03-13:53:59.040 35c8 Delete type=0 #4
+2025/12/03-15:02:46.528 35c8 Level-0 table #9: started
+2025/12/03-15:02:46.540 35c8 Level-0 table #9: 13737 bytes OK
+2025/12/03-15:02:46.545 35c8 Delete type=0 #6
+2025/12/03-16:25:46.472 35c8 Level-0 table #11: started
+2025/12/03-16:25:46.483 35c8 Level-0 table #11: 12965 bytes OK
+2025/12/03-16:25:46.486 35c8 Delete type=0 #8
