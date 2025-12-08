@@ -1,6 +1,8 @@
 import time
 import os
 import pyperclip
+import requests
+import subprocess
 import sys
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -9,6 +11,17 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
+
+
+# ==============================================================================
+# 🔄 SISTEMA DE AUTO-UPDATE
+# ==============================================================================
+VERSAO_ATUAL = "1.3"
+URL_VERSAO = "https://raw.githubusercontent.com/SEU_USUARIO/SEU_REPO/main/versao.txt"
+URL_EXECUTAVEL = "https://github.com/SEU_USUARIO/SEU_REPO/releases/download/vLatest/Mestre.exe"
+
+
+
 
 # ==============================================================================
 # ⚙️ CONFIGURAÇÕES
