@@ -12,14 +12,64 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 
-
+#teste de commit
 # ==============================================================================
 # 🔄 SISTEMA DE AUTO-UPDATE
 # ==============================================================================
-VERSAO_ATUAL = "1.3"
-URL_VERSAO = "https://raw.githubusercontent.com/SEU_USUARIO/SEU_REPO/main/versao.txt"
-URL_EXECUTAVEL = "https://github.com/SEU_USUARIO/SEU_REPO/releases/download/vLatest/Mestre.exe"
+VERSAO_ATUAL = "1.1"
+URL_VERSAO = "https://raw.githubusercontent.com/joaoAGS/Mestre-Executavel/refs/heads/main/versao.txt"
+URL_EXECUTAVEL = "https://github.com/joaoAGS/Mestre-Executavel/raw/refs/heads/main/Mestre.exe"
 
+def verificar_atualizacao():
+    print(f"🔍 Verificando atualizações... (Versão {VERSAO_ATUAL})")
+    try:
+        # 1. Pega a versão online
+        resposta = requests.get(URL_VERSAO)
+        versao_online = resposta.text.strip()
+        
+        # 2. Compara (Se a online for maior ou diferente)
+        if versao_online != VERSAO_ATUAL:
+            print(f"🚀 Nova versão encontrada: {versao_online}! Baixando...")
+            
+            # 3. Baixa o novo executável
+            resposta_exe = requests.get(URL_EXECUTAVEL)
+            
+            # Nome do arquivo atual e do novo
+            nome_atual = sys.argv[0]
+            nome_novo = "Mestre_Novo.exe"
+            
+            # 4. Salva o novo .exe
+            with open(nome_novo, 'wb') as f:
+                f.write(resposta_exe.content)
+            
+            print("✅ Download concluído! Instalando...")
+            
+            # 5. TRUQUE DE MESTRE: Script .bat para trocar os arquivos
+            # O Windows não deixa deletar o .exe enquanto ele roda.
+            # Então criamos um script que espera o robô fechar, troca os arquivos e reabre.
+            
+            bat_script = f"""
+            @echo off
+            timeout /t 2 >nul
+            del "{nome_atual}"
+            ren "{nome_novo}" "{os.path.basename(nome_atual)}"
+            start "" "{nome_atual}"
+            del "%~f0"
+            """
+            
+            with open("atualizador.bat", "w") as bat:
+                bat.write(bat_script)
+                
+            # Executa o .bat e fecha o robô atual
+            subprocess.Popen("atualizador.bat", shell=True)
+            sys.exit()
+            
+        else:
+            print("✅ Seu robô está atualizado.")
+            
+    except Exception as e:
+        print(f"⚠️ Erro ao verificar atualização: {e}")
+        # Continua o robô normalmente se der erro na internet
 
 
 
