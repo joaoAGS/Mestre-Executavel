@@ -19,7 +19,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # ==============================================================================
 
 # --- AUTO-UPDATE ---
-VERSAO_ATUAL = "1.9"  # <--- LEMBRE DE MUDAR ISSO QUANDO GERAR ATUALIZAÇÃO
+VERSAO_ATUAL = "1.9.1"  # <--- LEMBRE DE MUDAR ISSO QUANDO GERAR ATUALIZAÇÃO
 URL_VERSAO = "https://raw.githubusercontent.com/joaoAGS/Mestre-Executavel/refs/heads/main/versao.txt"
 URL_EXECUTAVEL = "https://github.com/joaoAGS/Mestre-Executavel/raw/refs/heads/main/Mestre.exe"
 
@@ -51,72 +51,64 @@ CAMINHO_PERFIL = os.path.join(diretorio_base, "perfil_chrome")
 # 🔄 FUNÇÃO DE ATUALIZAÇÃO (MODO SILENCIOSO E FORÇADO)
 # ==============================================================================
 def verificar_atualizacao():
-    print(f"🔍 Verificando atualizações... (Versão Atual: {VERSAO_ATUAL})")
+    print(f"🔍 Verificando atualizações... (Versão Local: {VERSAO_ATUAL})")
     try:
-        # Verifica versão (verify=False com avisos ocultos)
-        resposta = requests.get(URL_VERSAO, verify=False)
+        # TRUQUE ANTI-CACHE: Adiciona um número aleatório no final do link
+        # Isso obriga a internet a baixar o arquivo fresco, sem usar memória antiga
+        link_fresco = f"{URL_VERSAO}?v={int(time.time())}"
+        
+        resposta = requests.get(link_fresco, verify=False)
         versao_online = resposta.text.strip()
         
+        # DEBUG: Mostra o que ele achou (para você ver se está lendo certo)
+        print(f"🌐 Versão encontrada na internet: '{versao_online}'")
+        
         if versao_online != VERSAO_ATUAL and versao_online != "":
-            print(f"🚀 Nova versão encontrada: {versao_online}! Baixando atualização...")
+            print(f"🚀 ATUALIZAÇÃO DETECTADA: {versao_online}! Baixando...")
             
-            resposta_exe = requests.get(URL_EXECUTAVEL, verify=False)
+            # Baixa o executável (também com anti-cache para garantir)
+            link_exe_fresco = f"{URL_EXECUTAVEL}?v={int(time.time())}"
+            resposta_exe = requests.get(link_exe_fresco, verify=False)
             
-            # Salva como Mestre_Novo.exe na mesma pasta
             nome_novo_caminho = os.path.join(diretorio_base, "Mestre_Novo.exe")
             
             with open(nome_novo_caminho, 'wb') as f:
                 f.write(resposta_exe.content)
             
-            print("✅ Download concluído! O robô vai reiniciar em 5 segundos...")
+            print("✅ Download concluído! Reiniciando...")
             
-            # Pega apenas o NOME do arquivo (ex: Mestre.exe), sem o caminho completo
             nome_exe_apenas = os.path.basename(exe_atual)
             
-            # Script BAT Otimizado para pastas com acento (Robô)
-            # Ele entra na pasta (cd) e usa nomes curtos para evitar erros
             bat_script = f"""
             @echo off
             @chcp 65001 >nul
             title Atualizando...
-            
-            :: Entra na pasta do robo para evitar erros de caminho longo
             cd /d "{diretorio_base}"
-            
             echo Aguardando fechamento...
             timeout /t 3 /nobreak >nul
-            
             :TENTAR_MOVER
             move /y "Mestre_Novo.exe" "{nome_exe_apenas}"
             if errorlevel 1 (
-                echo Arquivo preso. Tentando de novo...
                 timeout /t 1 /nobreak >nul
                 goto TENTAR_MOVER
             )
-            
-            echo Sucesso! Iniciando...
             start "" "{nome_exe_apenas}"
-            
-            :: Auto-destruição segura (evita o erro "arquivo não encontrado")
             start /b "" cmd /c del "%~f0"&exit /b
             """
             
             bat_path = os.path.join(diretorio_base, "atualizador.bat")
-            
-            # Grava em UTF-8
             with open(bat_path, "w", encoding="utf-8") as bat:
                 bat.write(bat_script)
                 
-            # Executa
             subprocess.Popen(bat_path, shell=True)
             time.sleep(1)
             sys.exit()
             
         else:
-            print("✅ Seu robô está atualizado.")
+            print("✅ Nenhuma atualização necessária.")
             
     except Exception as e:
-        print(f"⚠️ Erro ao tentar atualizar: {e}")
+        print(f"⚠️ Erro ao verificar: {e}")
         time.sleep(2)
 # ==============================================================================
 # 🛠️ FUNÇÕES DE SUPORTE
