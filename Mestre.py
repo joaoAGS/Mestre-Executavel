@@ -13,110 +13,111 @@ from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 
 # ==============================================================================
-# ⚙️ CONFIGURAÇÕES E VARIÁVEIS GLOBAIS
+# ⚙️ CONFIGURAÇÕES
 # ==============================================================================
 
-# --- AUTO-UPDATE ---
-VERSAO_ATUAL = "1.5"
+# --- AUTO-UPDATE (LINKS) ---
+VERSAO_ATUAL = "1.2"
 URL_VERSAO = "https://raw.githubusercontent.com/joaoAGS/Mestre-Executavel/refs/heads/main/versao.txt"
 URL_EXECUTAVEL = "https://github.com/joaoAGS/Mestre-Executavel/raw/refs/heads/main/Mestre.exe"
 
-# --- LINKS ---
+# --- CONFIGURAÇÕES DE NAVEGAÇÃO ---
 URL_DASHBOARD = "https://paineladmin3.azurewebsites.net/mobfy/dashboard"
 URL_MAPA = "https://paineladmin3.azurewebsites.net/mobfy/vermapa"
 URL_WHATSAPP = "https://web.whatsapp.com"
 
-# --- NOMES DO WHATSAPP ---
 NOME_GRUPO_WHATSAPP = "MOBFY Avisos CAÇADOR"
-
-# --- LISTA DE CORRIDAS ---
 LISTA_CORRIDAS = ["Matheus Wichmann", "Mobfy Canal"]
 
-# --- INTERVALOS (Minutos) ---
+# TEMPOS (em minutos)
 TEMPO_OFFLINE = 3
 TEMPO_FROTA = 15
 TEMPO_CORRIDAS = 30
 
-# --- CAMINHO DO PERFIL (Lógica para funcionar no .exe e no Python) ---
+# --- CONFIGURAÇÃO DE PASTA (Compatível com .exe e .py) ---
 if getattr(sys, 'frozen', False):
     diretorio_base = os.path.dirname(sys.executable)
+    exe_atual = sys.executable
 else:
     diretorio_base = os.path.dirname(os.path.abspath(__file__))
+    exe_atual = os.path.abspath(__file__)
 
 CAMINHO_PERFIL = os.path.join(diretorio_base, "perfil_chrome")
 
 # ==============================================================================
-# 🔄 FUNÇÃO DE ATUALIZAÇÃO
+# 🔄 FUNÇÃO DE ATUALIZAÇÃO (CORRIGIDA)
 # ==============================================================================
 def verificar_atualizacao():
-    print(f"🔍 Verificando atualizações (Versão Atual: {VERSAO_ATUAL})")
+    print(f"🔍 Verificando atualizações... (Versão Atual: {VERSAO_ATUAL})")
     try:
-        # 1. Pega a versão online
-        resposta = requests.get(URL_VERSAO)
+        # Evita erro SSL em redes corporativas
+        resposta = requests.get(URL_VERSAO, verify=False)
         versao_online = resposta.text.strip()
         
-        # 2. Compara
-        if versao_online != VERSAO_ATUAL:
+        if versao_online != VERSAO_ATUAL and versao_online != "":
             print(f"🚀 Nova versão encontrada: {versao_online}! Baixando...")
             
-            # 3. Baixa o novo executável
-            resposta_exe = requests.get(URL_EXECUTAVEL)
+            resposta_exe = requests.get(URL_EXECUTAVEL, verify=False)
             
-            # Nome do arquivo atual e do novo
-            nome_atual = sys.argv[0]
-            nome_novo = "Mestre_Novo.exe"
+            # Define caminhos seguros
+            nome_novo = os.path.join(diretorio_base, "Mestre_Novo.exe")
             
-            # 4. Salva o novo .exe
+            # Salva o novo arquivo
             with open(nome_novo, 'wb') as f:
                 f.write(resposta_exe.content)
             
-            print("✅ Download concluído! Instalando...")
+            print("✅ Download concluído! Reiniciando para aplicar...")
             
-            # 5. Script .bat para trocar os arquivos
+            # CRIA O SCRIPT BAT MAIS ROBUSTO (Usa MOVE /Y para forçar)
             bat_script = f"""
             @echo off
-            timeout /t 2 >nul
-            del "{nome_atual}"
-            ren "{nome_novo}" "{os.path.basename(nome_atual)}"
-            start "" "{nome_atual}"
+            echo Aguardando fechamento do robo...
+            timeout /t 3 /nobreak >nul
+            
+            echo Substituindo arquivos...
+            move /y "{nome_novo}" "{exe_atual}"
+            
+            echo Reiniciando...
+            start "" "{exe_atual}"
+            
             del "%~f0"
             """
             
-            with open("atualizador.bat", "w") as bat:
+            bat_path = os.path.join(diretorio_base, "atualizador.bat")
+            with open(bat_path, "w") as bat:
                 bat.write(bat_script)
                 
-            # Executa o .bat e fecha o robô atual
-            subprocess.Popen("atualizador.bat", shell=True)
+            # Executa o BAT e encerra o Python imediatamente
+            subprocess.Popen(bat_path, shell=True)
             sys.exit()
             
         else:
             print("✅ Seu robô está atualizado.")
             
     except Exception as e:
-        print(f"⚠️ Erro ao verificar atualização: {e}")
-        time.sleep(2) # Pequena pausa para ler o erro se houver
+        print(f"⚠️ Erro no Update (Ignorando): {e}")
+        time.sleep(2)
 
 # ==============================================================================
 # 🛠️ FUNÇÕES DE SUPORTE
 # ==============================================================================
 
 def iniciar_driver():
-    print("🚀 Iniciando Robô Mestre (Com Cálculo de Perdas)...")
+    print("🚀 Iniciando Robô Mestre...")
     options = webdriver.ChromeOptions()
     options.add_argument(f"user-data-dir={CAMINHO_PERFIL}")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_experimental_option('excludeSwitches', ['enable-logging'])
     
-    # Tenta encontrar o Chrome automaticamente se o driver falhar
-    locais_possiveis = [
+    # Busca Chrome automaticamente
+    locais = [
         r"C:\Program Files\Google\Chrome\Application\chrome.exe",
         r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-        r"C:\Users\%USERNAME%\AppData\Local\Google\Chrome\Application\chrome.exe",
+        os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe")
     ]
-    locais_possiveis = [os.path.expandvars(p) for p in locais_possiveis]
     
-    for caminho in locais_possiveis:
+    for caminho in locais:
         if os.path.exists(caminho):
             options.binary_location = caminho
             break
@@ -125,51 +126,41 @@ def iniciar_driver():
 
 def enviar_whatsapp(driver, mensagem, destinatario):
     try:
-        print(f"💬 Preparando envio para: {destinatario}...")
-        driver.switch_to.window(driver.window_handles[3]) # ABA 3
-        
+        driver.switch_to.window(driver.window_handles[3])
         if "WhatsApp" not in driver.title:
-            print("⚠️ Recarregando WhatsApp...")
             driver.get(URL_WHATSAPP)
             time.sleep(10)
 
         wait = WebDriverWait(driver, 40)
         
+        # Busca
         try:
-            xpath_search = '//div[@contenteditable="true"][@data-tab="3"]'
-            search_box = wait.until(EC.element_to_be_clickable((By.XPATH, xpath_search)))
-            search_box.click()
-            search_box.send_keys(Keys.CONTROL + "a")
-            search_box.send_keys(Keys.BACKSPACE)
-            search_box.send_keys(destinatario)
+            box = wait.until(EC.element_to_be_clickable((By.XPATH, '//div[@contenteditable="true"][@data-tab="3"]')))
+            box.click()
+            box.send_keys(Keys.CONTROL + "a")
+            box.send_keys(Keys.BACKSPACE)
+            box.send_keys(destinatario)
             time.sleep(2)
-            search_box.send_keys(Keys.ENTER)
+            box.send_keys(Keys.ENTER)
         except:
-            print(f"❌ Destinatário '{destinatario}' não encontrado.")
+            print(f"❌ '{destinatario}' não achado.")
             return
 
-        xpath_campo = '//footer//div[@contenteditable="true"]'
-        campo = wait.until(EC.presence_of_element_located((By.XPATH, xpath_campo)))
-        campo.click()
+        # Envia
+        chat = wait.until(EC.presence_of_element_located((By.XPATH, '//footer//div[@contenteditable="true"]')))
+        chat.click()
         time.sleep(1)
-        
         pyperclip.copy(mensagem)
-        campo.send_keys(Keys.CONTROL, 'v')
+        chat.send_keys(Keys.CONTROL, 'v')
         time.sleep(1)
-        
-        try:
-            btn = driver.find_element(By.XPATH, "//span[@data-icon='send']")
-            driver.execute_script("arguments[0].click();", btn)
-        except:
-            campo.send_keys(Keys.ENTER)
-            
-        print(f"✅ Mensagem enviada para {destinatario}!")
-        time.sleep(3)
+        chat.send_keys(Keys.ENTER)
+        print(f"✅ Enviado: {destinatario}")
+        time.sleep(2)
         
     except Exception as e:
-        print(f"❌ Erro envio Zap ({destinatario}): {e}")
+        print(f"❌ Erro Zap: {e}")
 
-def ler_texto_painel(driver, xpath):
+def ler_texto(driver, xpath):
     try:
         el = driver.find_element(By.XPATH, xpath)
         return el.text if el.text else el.get_attribute("textContent")
@@ -180,221 +171,141 @@ def filtrar_dados_offline(texto):
     if not texto: return "Dados ilegíveis"
     nome, celular = "Não identificado", "Não informado"
     for linha in texto.split('\n'):
-        linha = linha.strip()
-        if "Nome:" in linha: nome = linha.replace("Nome:", "").strip()
-        elif "Motorista:" in linha: nome = linha.replace("Motorista:", "").strip()
-        if "Celular:" in linha: celular = linha.replace("Celular:", "").strip()
-        elif "Telefone:" in linha: celular = linha.replace("Telefone:", "").strip()
+        if "Nome:" in linha or "Motorista:" in linha: 
+            nome = linha.split(":")[-1].strip()
+        if "Celular:" in linha or "Telefone:" in linha:
+            celular = linha.split(":")[-1].strip()
     return f"🚫 Nome: {nome}\nCelular: {celular}"
 
 # ==============================================================================
-# TAREFAS (OFFLINE, FROTA, CORRIDAS)
+# TAREFAS
 # ==============================================================================
 
 def tarefa_offline_inteligente(driver):
-    print("\n🔍 [OFFLINE] Buscando pinos amarelos...")
+    print("\n🔍 [OFFLINE] Verificando...")
     try:
         driver.switch_to.window(driver.window_handles[2])
-        if driver.current_url != URL_MAPA:
-            driver.get(URL_MAPA)
-        else:
-            driver.refresh()
-        
+        if driver.current_url != URL_MAPA: driver.get(URL_MAPA)
+        else: driver.refresh()
         time.sleep(15)
 
         amarelos = driver.find_elements(By.CSS_SELECTOR, "img[src*='pin-amarelo.png']")
-        qtd_offline = len(amarelos)
+        qtd = len(amarelos)
         
-        if qtd_offline == 0:
-            print("✅ [OFFLINE] Tudo normal.")
+        if qtd == 0: return
+
+        if qtd >= 16:
+            msg = f"🚨 *CRÍTICO: {qtd} OFFLINE* 🚨\nPeçam para reiniciar os celulares."
+            enviar_whatsapp(driver, msg, NOME_GRUPO_WHATSAPP)
             return
 
-        if qtd_offline >= 16:
-            print(f"⚠️ [CRÍTICO] {qtd_offline} offlines! Enviando alerta de rede...")
-            mensagem = (
-                f"🚨 *ALERTA CRÍTICO: INSTABILIDADE NA REDE* 🚨\n\n"
-                f"⚠️ Foram detectados *{qtd_offline} motoristas offline* simultaneamente.\n\n"
-                f"📢 *AÇÃO IMEDIATA:*\n"
-                f"Por favor, solicitem que *TODOS* os motoristas reiniciem seus aparelhos celulares e verifiquem a conexão de dados."
-            )
-            enviar_whatsapp(driver, mensagem, NOME_GRUPO_WHATSAPP)
-            return
-
-        print(f"⚠️ [OFFLINE] {qtd_offline} detectados. Listando até 15...")
-        lista_final = []
-
-        for i, pino in enumerate(amarelos[:15]):
+        lista = []
+        for pino in amarelos[:15]:
             try:
                 driver.execute_script("arguments[0].click();", pino)
-                time.sleep(1.5)
-                xpath_info = '//*[@id="map"]/div/div[3]/div[1]/div[2]/div/div[4]'
+                time.sleep(1)
+                xpath = '//*[@id="map"]/div/div[3]/div[1]/div[2]/div/div[4]'
                 try:
-                    elem = driver.find_element(By.XPATH, xpath_info)
-                    texto = elem.text if elem.text else elem.get_attribute("textContent")
-                    lista_final.append(filtrar_dados_offline(texto))
+                    txt = driver.find_element(By.XPATH, xpath).text
+                    lista.append(filtrar_dados_offline(txt))
                 except:
-                    try:
-                        tit = driver.find_element(By.CLASS_NAME, "infowindow-title").text
-                        lista_final.append(f"🚫 {tit} (Sem telefone)")
-                    except:
-                        lista_final.append("Erro na leitura")
-                
+                    lista.append("Erro leitura")
                 driver.find_element(By.TAG_NAME, 'body').click()
-                time.sleep(0.5)
-            except:
-                continue
+            except: continue
 
-        if lista_final:
-            texto_zap = "\n\n".join(lista_final)
-            mensagem = (
-                f"⚠️ *ALERTA: MOTORISTAS ONLINE SEM INTERNET - {time.strftime('%H:%M')}*\n\n"
-                f"Total Detectado: {qtd_offline}\n\n"
-                f"{texto_zap}"
-            )
-            enviar_whatsapp(driver, mensagem, NOME_GRUPO_WHATSAPP)
+        if lista:
+            msg = f"⚠️ *OFFLINE SEM NET ({qtd})*\n\n" + "\n\n".join(lista)
+            enviar_whatsapp(driver, msg, NOME_GRUPO_WHATSAPP)
 
-    except Exception as e:
-        print(f"❌ Erro Offline: {e}")
+    except Exception as e: print(f"Erro Offline: {e}")
 
 def tarefa_status_frota(driver):
-    print("\n🚗 [FROTA] Contando geral...")
+    print("\n🚗 [FROTA] Contando...")
     try:
         driver.switch_to.window(driver.window_handles[1])
-        if driver.current_url != URL_MAPA:
-            driver.get(URL_MAPA)
-        else:
-            driver.refresh()
-        
+        if driver.current_url != URL_MAPA: driver.get(URL_MAPA)
+        else: driver.refresh()
         time.sleep(15)
 
         livres = len(driver.find_elements(By.CSS_SELECTOR, "img[src*='verde']"))
-        em_corrida = len(driver.find_elements(By.CSS_SELECTOR, "img[src*='vermelho']")) + \
-                     len(driver.find_elements(By.CSS_SELECTOR, "img[src*='ocupado']"))
+        ocupados = len(driver.find_elements(By.CSS_SELECTOR, "img[src*='vermelho']")) + \
+                   len(driver.find_elements(By.CSS_SELECTOR, "img[src*='ocupado']"))
         offline = len(driver.find_elements(By.CSS_SELECTOR, "img[src*='amarelo']"))
         
-        total = livres + em_corrida + offline
-
-        msg = (
-            f"🚗 Status da Frota - {time.strftime('%H:%M')}\n"
-            f"🟢 Livres: {livres}\n"
-            f"🔴 Em Corrida: {em_corrida}\n"
-            f"⚠️ Online sem internet: {offline}\n"
-            f"📊 Total: {total}"
-        )
+        msg = f"🚗 Frota - {time.strftime('%H:%M')}\n🟢 Livres: {livres}\n🔴 Ocupados: {ocupados}\n⚠️ Offline: {offline}"
         enviar_whatsapp(driver, msg, NOME_GRUPO_WHATSAPP)
 
-    except Exception as e:
-        print(f"❌ Erro Frota: {e}")
+    except Exception as e: print(f"Erro Frota: {e}")
 
 def tarefa_corridas(driver):
-    print("\n📊 [DASHBOARD] Coletando estatísticas e calculando perdas...")
+    print("\n📊 [DASHBOARD] Calculando...")
     try:
         driver.switch_to.window(driver.window_handles[0])
-        if driver.current_url != URL_DASHBOARD:
-            driver.get(URL_DASHBOARD)
-        else:
-            driver.refresh()
-        
+        if driver.current_url != URL_DASHBOARD: driver.get(URL_DASHBOARD)
+        else: driver.refresh()
         time.sleep(15)
 
-        xp_sim = '/html/body/div/app/div/div/div[2]/div[1]/div/div[1]/h3'
-        xp_sol = '/html/body/div/app/div/div/div[2]/div[2]/div/div[1]/h3'
-        xp_con = '/html/body/div/app/div/div/div[2]/div[3]/div/div[1]/h3'
-        xp_por = '/html/body/div/app/div/div/div[2]/div[4]/div/div[1]/h3'
-
-        txt_sim = ler_texto_painel(driver, xp_sim)
-        txt_sol = ler_texto_painel(driver, xp_sol)
-        txt_con = ler_texto_painel(driver, xp_con)
-        txt_por = ler_texto_painel(driver, xp_por)
+        sim = ler_texto(driver, '/html/body/div/app/div/div/div[2]/div[1]/div/div[1]/h3')
+        sol = ler_texto(driver, '/html/body/div/app/div/div/div[2]/div[2]/div/div[1]/h3')
+        con = ler_texto(driver, '/html/body/div/app/div/div/div[2]/div[3]/div/div[1]/h3')
+        por = ler_texto(driver, '/html/body/div/app/div/div/div[2]/div[4]/div/div[1]/h3')
 
         try:
-            num_sol = int(txt_sol.replace('.', ''))
-            num_con = int(txt_con.replace('.', ''))
-            calculo_perdidas = num_sol - num_con
-        except:
-            calculo_perdidas = "?"
+            perdidas = int(sol.replace('.','')) - int(con.replace('.',''))
+        except: perdidas = "?"
 
-        msg = (
-            f"*📊 Relatório de Corridas - {time.strftime('%H:%M')}*\n"
-            f"📅 _Atualização a cada 30min_\n\n"
-            f"🔢 *Simulações:* {txt_sim}\n"
-            f"📩 *Solicitações:* {txt_sol}\n"
-            f"✅ *Concluídas:* {txt_con}\n"
-            f"❌ *Perdidas/Canc:* {calculo_perdidas}\n"
-            f"📈 *Conversão:* {txt_por}"
-        )
+        msg = f"*📊 Relatório - {time.strftime('%H:%M')}*\n🔢 Simul: {sim}\n📩 Solic: {sol}\n✅ Conc: {con}\n❌ Canc/Perd: {perdidas}\n📈 Conv: {por}"
         
-        print(f"📤 Enviando relatório para {len(LISTA_CORRIDAS)} destinatários...")
-        for destinatario in LISTA_CORRIDAS:
-            enviar_whatsapp(driver, msg, destinatario)
-            time.sleep(2)
+        for dest in LISTA_CORRIDAS:
+            enviar_whatsapp(driver, msg, dest)
 
-    except Exception as e:
-        print(f"❌ Erro Corridas: {e}")
+    except Exception as e: print(f"Erro Dash: {e}")
 
 # ==============================================================================
-# 🔄 LOOP PRINCIPAL (APENAS UM!)
+# MAIN
 # ==============================================================================
 if __name__ == "__main__":
     
-    # 1. VERIFICA ATUALIZAÇÃO ANTES DE QUALQUER COISA
-    verificar_atualizacao()
+    # Se rodar como .exe, verifica update
+    if getattr(sys, 'frozen', False):
+        verificar_atualizacao()
 
-    # 2. CONFIGURA PASTA DO PERFIL
     if not os.path.exists(CAMINHO_PERFIL):
         os.makedirs(CAMINHO_PERFIL)
         
-    # 3. MATA PROCESSOS VELHOS
     os.system("taskkill /F /IM chrome.exe /T >nul 2>&1")
     
-    # 4. INICIA O NAVEGADOR
     driver = iniciar_driver()
     
-    print("\n🛠️  ABRINDO AS 4 ABAS...")
+    # Abre abas
     driver.get(URL_DASHBOARD)
+    for i in range(3): 
+        driver.execute_script("window.open('');")
     
-    driver.execute_script("window.open('');")
-    driver.switch_to.window(driver.window_handles[1])
-    driver.get(URL_MAPA)
+    abas = driver.window_handles
+    driver.switch_to.window(abas[1]); driver.get(URL_MAPA)
+    driver.switch_to.window(abas[2]); driver.get(URL_MAPA)
+    driver.switch_to.window(abas[3]); driver.get(URL_WHATSAPP)
     
-    driver.execute_script("window.open('');")
-    driver.switch_to.window(driver.window_handles[2])
-    driver.get(URL_MAPA)
-    
-    driver.execute_script("window.open('');")
-    driver.switch_to.window(driver.window_handles[3])
-    driver.get(URL_WHATSAPP)
-    
-    print("\n" + "="*60)
-    print("⏳ 60 SEGUNDOS PARA LOGIN!")
-    print("="*60 + "\n")
-    
+    print("\n⏳ 60s para LOGIN...")
     time.sleep(60)
-    
-    print("🤖 MONITORAMENTO INTELIGENTE INICIADO.")
+    print("🤖 ROBÔ RODANDO!")
 
-    proximo_offline = 0
-    proximo_frota = 0
-    proximo_corridas = 0
+    t_off = t_frota = t_corr = 0
     
     while True:
         agora = time.time()
         
-        # --- OFFLINE ---
-        if agora >= proximo_offline:
+        if agora >= t_off:
             tarefa_offline_inteligente(driver)
-            proximo_offline = time.time() + (TEMPO_OFFLINE * 60)
+            t_off = time.time() + (TEMPO_OFFLINE * 60)
             
-        # --- FROTA ---
-        agora = time.time()
-        if agora >= proximo_frota:
+        if agora >= t_frota:
             tarefa_status_frota(driver)
-            proximo_frota = time.time() + (TEMPO_FROTA * 60)
+            t_frota = time.time() + (TEMPO_FROTA * 60)
             
-        # --- CORRIDAS ---
-        agora = time.time()
-        if agora >= proximo_corridas:
+        if agora >= t_corr:
             tarefa_corridas(driver)
-            proximo_corridas = time.time() + (TEMPO_CORRIDAS * 60)
+            t_corr = time.time() + (TEMPO_CORRIDAS * 60)
             
         time.sleep(10)
