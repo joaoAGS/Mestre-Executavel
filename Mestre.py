@@ -12,41 +12,32 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 
-#teste de commit
 # ==============================================================================
-# 🔄 SISTEMA DE AUTO-UPDATE
+# ⚙️ CONFIGURAÇÕES E VARIÁVEIS GLOBAIS
 # ==============================================================================
-VERSAO_ATUAL = "1.4"
+
+# --- AUTO-UPDATE ---
+VERSAO_ATUAL = "1.3"
 URL_VERSAO = "https://raw.githubusercontent.com/joaoAGS/Mestre-Executavel/refs/heads/main/versao.txt"
 URL_EXECUTAVEL = "https://github.com/joaoAGS/Mestre-Executavel/raw/refs/heads/main/Mestre.exe"
 
-
-# ==============================================================================
-# ⚙️ CONFIGURAÇÕES E VERIAVEIS GLOBAIS
-# ==============================================================================
-
-VERSAO_ATUAL = "1.2"
-URL_VERSAO = "https://raw.githubusercontent.com/joaoAGS/Mestre-Executavel/refs/heads/main/versao.txt"
-URL_EXECUTAVEL = "https://github.com/joaoAGS/Mestre-Executavel/raw/refs/heads/main/Mestre.exe"
-
-
+# --- LINKS ---
 URL_DASHBOARD = "https://paineladmin3.azurewebsites.net/mobfy/dashboard"
 URL_MAPA = "https://paineladmin3.azurewebsites.net/mobfy/vermapa"
 URL_WHATSAPP = "https://web.whatsapp.com"
 
-# --- NOMES DO WHATSAPP (Edite aqui) ---
-NOME_GRUPO_WHATSAPP = "MOBFY Avisos CAÇADOR"    # Para alertas de Offline e Frota
+# --- NOMES DO WHATSAPP ---
+NOME_GRUPO_WHATSAPP = "MOBFY Avisos CAÇADOR"
 
-# --- LISTA DE QUEM RECEBE O RELATÓRIO DE CORRIDAS ---
-# Adicione ou remova nomes entre aspas, separados por vírgula
+# --- LISTA DE CORRIDAS ---
 LISTA_CORRIDAS = ["Matheus Wichmann", "Mobfy Canal"]
 
 # --- INTERVALOS (Minutos) ---
-TEMPO_OFFLINE = 3      # Verifica offline (Aba 2)
-TEMPO_FROTA = 15        # Relatório geral de cores (Aba 1)
-TEMPO_CORRIDAS = 30    # Relatório dashboard (Aba 0)
+TEMPO_OFFLINE = 3
+TEMPO_FROTA = 15
+TEMPO_CORRIDAS = 30
 
-# Se estiver rodando como .exe, usa o caminho do executável. Se for script, usa o local do arquivo.
+# --- CAMINHO DO PERFIL (Lógica para funcionar no .exe e no Python) ---
 if getattr(sys, 'frozen', False):
     diretorio_base = os.path.dirname(sys.executable)
 else:
@@ -55,16 +46,16 @@ else:
 CAMINHO_PERFIL = os.path.join(diretorio_base, "perfil_chrome")
 
 # ==============================================================================
-# 🛠️ FUNÇÕES DE SUPORTE
+# 🔄 FUNÇÃO DE ATUALIZAÇÃO
 # ==============================================================================
 def verificar_atualizacao():
-    print(f"🔍 Verificando atualizações... (Versão {VERSAO_ATUAL})")
+    print(f"🔍 Verificando atualizações... (Versão Atual: {VERSAO_ATUAL})")
     try:
         # 1. Pega a versão online
         resposta = requests.get(URL_VERSAO)
         versao_online = resposta.text.strip()
         
-        # 2. Compara (Se a online for maior ou diferente)
+        # 2. Compara
         if versao_online != VERSAO_ATUAL:
             print(f"🚀 Nova versão encontrada: {versao_online}! Baixando...")
             
@@ -81,10 +72,7 @@ def verificar_atualizacao():
             
             print("✅ Download concluído! Instalando...")
             
-            # 5. TRUQUE DE MESTRE: Script .bat para trocar os arquivos
-            # O Windows não deixa deletar o .exe enquanto ele roda.
-            # Então criamos um script que espera o robô fechar, troca os arquivos e reabre.
-            
+            # 5. Script .bat para trocar os arquivos
             bat_script = f"""
             @echo off
             timeout /t 2 >nul
@@ -106,21 +94,36 @@ def verificar_atualizacao():
             
     except Exception as e:
         print(f"⚠️ Erro ao verificar atualização: {e}")
-        # Continua o robô normalmente se der erro na internet
-        
+        time.sleep(2) # Pequena pausa para ler o erro se houver
+
+# ==============================================================================
+# 🛠️ FUNÇÕES DE SUPORTE
+# ==============================================================================
+
 def iniciar_driver():
-    print("🚀 Iniciando Robô Mestre... (Com Cálculo de Perdas)...")
+    print("🚀 Iniciando Robô Mestre (Com Cálculo de Perdas)...")
     options = webdriver.ChromeOptions()
     options.add_argument(f"user-data-dir={CAMINHO_PERFIL}")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_experimental_option('excludeSwitches', ['enable-logging'])
+    
+    # Tenta encontrar o Chrome automaticamente se o driver falhar
+    locais_possiveis = [
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+        r"C:\Users\%USERNAME%\AppData\Local\Google\Chrome\Application\chrome.exe",
+    ]
+    locais_possiveis = [os.path.expandvars(p) for p in locais_possiveis]
+    
+    for caminho in locais_possiveis:
+        if os.path.exists(caminho):
+            options.binary_location = caminho
+            break
+
     return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
 def enviar_whatsapp(driver, mensagem, destinatario):
-    """
-    Envia mensagem para um destinatário específico (Grupo ou Pessoa).
-    """
     try:
         print(f"💬 Preparando envio para: {destinatario}...")
         driver.switch_to.window(driver.window_handles[3]) # ABA 3
@@ -132,7 +135,6 @@ def enviar_whatsapp(driver, mensagem, destinatario):
 
         wait = WebDriverWait(driver, 40)
         
-        # Busca Contato
         try:
             xpath_search = '//div[@contenteditable="true"][@data-tab="3"]'
             search_box = wait.until(EC.element_to_be_clickable((By.XPATH, xpath_search)))
@@ -146,7 +148,6 @@ def enviar_whatsapp(driver, mensagem, destinatario):
             print(f"❌ Destinatário '{destinatario}' não encontrado.")
             return
 
-        # Envia Mensagem
         xpath_campo = '//footer//div[@contenteditable="true"]'
         campo = wait.until(EC.presence_of_element_located((By.XPATH, xpath_campo)))
         campo.click()
@@ -187,12 +188,13 @@ def filtrar_dados_offline(texto):
     return f"🚫 Nome: {nome}\nCelular: {celular}"
 
 # ==============================================================================
-# 1️⃣ TAREFA: OFFLINE INTELIGENTE (1 a 15 = Lista / 16+ = Alerta Geral)
+# TAREFAS (OFFLINE, FROTA, CORRIDAS)
 # ==============================================================================
+
 def tarefa_offline_inteligente(driver):
     print("\n🔍 [OFFLINE] Buscando pinos amarelos...")
     try:
-        driver.switch_to.window(driver.window_handles[2]) # ABA 2
+        driver.switch_to.window(driver.window_handles[2])
         if driver.current_url != URL_MAPA:
             driver.get(URL_MAPA)
         else:
@@ -203,12 +205,10 @@ def tarefa_offline_inteligente(driver):
         amarelos = driver.find_elements(By.CSS_SELECTOR, "img[src*='pin-amarelo.png']")
         qtd_offline = len(amarelos)
         
-        # CASO 0: Ninguém offline
         if qtd_offline == 0:
             print("✅ [OFFLINE] Tudo normal.")
             return
 
-        # CASO CRÍTICO: 16 ou mais offline (Provável queda de rede)
         if qtd_offline >= 16:
             print(f"⚠️ [CRÍTICO] {qtd_offline} offlines! Enviando alerta de rede...")
             mensagem = (
@@ -220,23 +220,19 @@ def tarefa_offline_inteligente(driver):
             enviar_whatsapp(driver, mensagem, NOME_GRUPO_WHATSAPP)
             return
 
-        # CASO PADRÃO: Entre 1 e 15 (Lista individual)
         print(f"⚠️ [OFFLINE] {qtd_offline} detectados. Listando até 15...")
         lista_final = []
 
-        # Loop vai até 15
         for i, pino in enumerate(amarelos[:15]):
             try:
                 driver.execute_script("arguments[0].click();", pino)
                 time.sleep(1.5)
-                
                 xpath_info = '//*[@id="map"]/div/div[3]/div[1]/div[2]/div/div[4]'
                 try:
                     elem = driver.find_element(By.XPATH, xpath_info)
                     texto = elem.text if elem.text else elem.get_attribute("textContent")
                     lista_final.append(filtrar_dados_offline(texto))
                 except:
-                    # Tenta pegar pelo título se falhar
                     try:
                         tit = driver.find_element(By.CLASS_NAME, "infowindow-title").text
                         lista_final.append(f"🚫 {tit} (Sem telefone)")
@@ -260,13 +256,10 @@ def tarefa_offline_inteligente(driver):
     except Exception as e:
         print(f"❌ Erro Offline: {e}")
 
-# ==============================================================================
-# 2️⃣ TAREFA: STATUS DA FROTA (5 min) - ABA 1
-# ==============================================================================
 def tarefa_status_frota(driver):
     print("\n🚗 [FROTA] Contando geral...")
     try:
-        driver.switch_to.window(driver.window_handles[1]) # ABA 1
+        driver.switch_to.window(driver.window_handles[1])
         if driver.current_url != URL_MAPA:
             driver.get(URL_MAPA)
         else:
@@ -293,13 +286,10 @@ def tarefa_status_frota(driver):
     except Exception as e:
         print(f"❌ Erro Frota: {e}")
 
-# ==============================================================================
-# 3️⃣ TAREFA: CORRIDAS (30 min) - ABA 0 - DIRETO PARA LISTA VIP
-# ==============================================================================
 def tarefa_corridas(driver):
     print("\n📊 [DASHBOARD] Coletando estatísticas e calculando perdas...")
     try:
-        driver.switch_to.window(driver.window_handles[0]) # ABA 0
+        driver.switch_to.window(driver.window_handles[0])
         if driver.current_url != URL_DASHBOARD:
             driver.get(URL_DASHBOARD)
         else:
@@ -312,21 +302,17 @@ def tarefa_corridas(driver):
         xp_con = '/html/body/div/app/div/div/div[2]/div[3]/div/div[1]/h3'
         xp_por = '/html/body/div/app/div/div/div[2]/div[4]/div/div[1]/h3'
 
-        # LEITURA DOS DADOS (Texto puro)
         txt_sim = ler_texto_painel(driver, xp_sim)
         txt_sol = ler_texto_painel(driver, xp_sol)
         txt_con = ler_texto_painel(driver, xp_con)
         txt_por = ler_texto_painel(driver, xp_por)
 
-        # CÁLCULO DE CORRIDAS PERDIDAS (Solicitações - Concluídas)
         try:
-            # Removemos pontos caso o número seja milhar (ex: 1.500 vira 1500)
             num_sol = int(txt_sol.replace('.', ''))
             num_con = int(txt_con.replace('.', ''))
-            
             calculo_perdidas = num_sol - num_con
         except:
-            calculo_perdidas = "?" # Retorna ? se houver erro na conversão
+            calculo_perdidas = "?"
 
         msg = (
             f"*📊 Relatório de Corridas - {time.strftime('%H:%M')}*\n"
@@ -338,27 +324,30 @@ def tarefa_corridas(driver):
             f"📈 *Conversão:* {txt_por}"
         )
         
-        # LOOP PARA ENVIAR PARA TODOS DA LISTA
         print(f"📤 Enviando relatório para {len(LISTA_CORRIDAS)} destinatários...")
         for destinatario in LISTA_CORRIDAS:
             enviar_whatsapp(driver, msg, destinatario)
-            time.sleep(2) # Pequena pausa entre envios
+            time.sleep(2)
 
     except Exception as e:
         print(f"❌ Erro Corridas: {e}")
 
 # ==============================================================================
-# 🔄 LOOP PRINCIPAL
+# 🔄 LOOP PRINCIPAL (APENAS UM!)
 # ==============================================================================
 if __name__ == "__main__":
     
+    # 1. VERIFICA ATUALIZAÇÃO ANTES DE QUALQUER COISA
     verificar_atualizacao()
-    
+
+    # 2. CONFIGURA PASTA DO PERFIL
     if not os.path.exists(CAMINHO_PERFIL):
         os.makedirs(CAMINHO_PERFIL)
         
+    # 3. MATA PROCESSOS VELHOS
     os.system("taskkill /F /IM chrome.exe /T >nul 2>&1")
     
+    # 4. INICIA O NAVEGADOR
     driver = iniciar_driver()
     
     print("\n🛠️  ABRINDO AS 4 ABAS...")
@@ -391,18 +380,18 @@ if __name__ == "__main__":
     while True:
         agora = time.time()
         
-        # --- OFFLINE (3 min) ---
+        # --- OFFLINE ---
         if agora >= proximo_offline:
             tarefa_offline_inteligente(driver)
             proximo_offline = time.time() + (TEMPO_OFFLINE * 60)
             
-        # --- FROTA (5 min) ---
+        # --- FROTA ---
         agora = time.time()
         if agora >= proximo_frota:
             tarefa_status_frota(driver)
             proximo_frota = time.time() + (TEMPO_FROTA * 60)
             
-        # --- CORRIDAS (30 min) ---
+        # --- CORRIDAS ---
         agora = time.time()
         if agora >= proximo_corridas:
             tarefa_corridas(driver)
