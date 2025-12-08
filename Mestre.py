@@ -4,6 +4,7 @@ import pyperclip
 import requests
 import subprocess
 import sys
+import urllib3
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -11,13 +12,14 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # ==============================================================================
 # ⚙️ CONFIGURAÇÕES
 # ==============================================================================
 
 # --- AUTO-UPDATE ---
-VERSAO_ATUAL = "1.7"  # <--- LEMBRE DE MUDAR ISSO QUANDO GERAR ATUALIZAÇÃO
+VERSAO_ATUAL = "1.8"  # <--- LEMBRE DE MUDAR ISSO QUANDO GERAR ATUALIZAÇÃO
 URL_VERSAO = "https://raw.githubusercontent.com/joaoAGS/Mestre-Executavel/refs/heads/main/versao.txt"
 URL_EXECUTAVEL = "https://github.com/joaoAGS/Mestre-Executavel/raw/refs/heads/main/Mestre.exe"
 
@@ -51,39 +53,28 @@ CAMINHO_PERFIL = os.path.join(diretorio_base, "perfil_chrome")
 def verificar_atualizacao():
     print(f"🔍 Verificando atualizações... (Versão Atual: {VERSAO_ATUAL})")
     try:
-        # Verifica versão sem verificar SSL (evita erro em algumas redes)
+        # Verifica versão (verify=False com avisos ocultos)
         resposta = requests.get(URL_VERSAO, verify=False)
         versao_online = resposta.text.strip()
         
-        # Se a versão online for diferente e não estiver vazia
         if versao_online != VERSAO_ATUAL and versao_online != "":
             print(f"🚀 Nova versão encontrada: {versao_online}! Baixando atualização...")
             
-            # Baixa o novo executável
             resposta_exe = requests.get(URL_EXECUTAVEL, verify=False)
             
-            # Define o nome temporário
             nome_novo = os.path.join(diretorio_base, "Mestre_Novo.exe")
             
-            # Salva o arquivo no disco
             with open(nome_novo, 'wb') as f:
                 f.write(resposta_exe.content)
             
             print("✅ Download concluído! O robô vai reiniciar em 5 segundos...")
             
-            # ---------------------------------------------------------
-            # O SEGREDO DO SUCESSO: SCRIPT BAT BLINDADO
-            # ---------------------------------------------------------
-            # 1. Espera 3 segundos
-            # 2. Tenta mover o arquivo novo para o lugar do velho
-            # 3. Se der erro (arquivo preso), tenta de novo (loop)
-            # 4. Inicia o novo robô
-            # 5. Se deleta
-            
+            # --- CORREÇÃO DE ACENTOS (UTF-8) ---
             nome_exe_original = os.path.basename(exe_atual)
             
             bat_script = f"""
             @echo off
+            @chcp 65001 >nul
             title Atualizando Robo...
             echo Aguardando fechamento do aplicativo...
             timeout /t 3 /nobreak >nul
@@ -102,21 +93,21 @@ def verificar_atualizacao():
             """
             
             bat_path = os.path.join(diretorio_base, "atualizador.bat")
-            with open(bat_path, "w") as bat:
+            
+            # FORÇA A CRIAÇÃO DO ARQUIVO EM UTF-8 PARA LER O "ô"
+            with open(bat_path, "w", encoding="utf-8") as bat:
                 bat.write(bat_script)
                 
-            # Roda o atualizador e MATA o processo atual imediatamente
             subprocess.Popen(bat_path, shell=True)
             time.sleep(1)
-            sys.exit() # Fecha o robô atual para liberar o arquivo
+            sys.exit()
             
         else:
             print("✅ Seu robô está atualizado.")
             
     except Exception as e:
-        print(f"⚠️ Erro ao tentar atualizar (O robô vai continuar normal): {e}")
+        print(f"⚠️ Erro ao tentar atualizar: {e}")
         time.sleep(2)
-
 # ==============================================================================
 # 🛠️ FUNÇÕES DE SUPORTE
 # ==============================================================================
