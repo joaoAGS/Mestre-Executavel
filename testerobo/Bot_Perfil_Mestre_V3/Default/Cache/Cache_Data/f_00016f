@@ -1,0 +1,725 @@
+﻿var map = "";
+var urlSA = "";
+
+var hashMap = new Map();
+var markersPrestador = [];
+var markersCT = [];
+var intervalListener = "";
+var bounds = new google.maps.LatLngBounds();
+var polyline = new google.maps.Polyline({
+    path: [],
+    strokeColor: '#0D285B',
+    strokeWeight: 3
+});
+var flagBounds = true;
+
+var markerOrigem = null;
+var markersDestino = [];
+//const markerHeight = '48';
+//const labelHeight = '26';
+
+function googleMap_setup(divMapID, latInicial, lonInicial, urlInicialSA) {
+
+    try {
+        var latLng = new google.maps.LatLng(parseFloat(latInicial), parseFloat(lonInicial));
+        urlSA = urlInicialSA;
+        map = new google.maps.Map(document.getElementById(divMapID), {
+            center: latLng,
+            zoom: 10,
+            mapTypeId: google.maps.MapTypeId.ROADMAP,
+            mapId: "devbase_google_map", // Map ID is required for advanced markers.
+        });
+
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+function createMarkerPrestador_mapa(geolocalizacaoID, prestadorID, latLng, prestadorNome, PrestadorIDCrypto, celular, veiculo, placa, foto, quantidadeSolicitacao, solicitacoesPrestador, ultimaAtualizacao, quantidadeServicos, servicosPrestador, online, identificador, semInternet, telaDetalhe, projetoUrl, idioma) {
+
+    //var image = createMarkerImage_mapa(quantidadeSolicitacao, online, semInternet);
+    var image = createAdvancedMarkerImage_mapa(quantidadeSolicitacao, online, semInternet);
+
+    //var marker = new MarkerWithLabel({
+    //    position: latLng,
+    //    map: map,
+    //    title: String(prestadorNome),
+    //    //label: 'Nome do Marker',
+    //    icon: image,
+    //    labelContent: identificador,
+    //    labelAnchor: new google.maps.Point(27, 0),
+    //    labelClass: "label-markers", // the CSS class for the label
+    //    labelStyle: { opacity: 1.75 }
+    //});
+
+    let glyphDiv = document.createElement("div");
+    glyphDiv.style = 'text-align: center; padding-bottom: 26px;';
+    glyphDiv.appendChild(image);
+    //glyphDiv.appendChild(glyphLabel);
+
+    //var marker = new google.maps.Marker({
+    var marker = new google.maps.marker.AdvancedMarkerElement({
+        position: latLng,
+        draggable: false,
+        content: glyphDiv,
+        gmpClickable: true,
+        map: map,
+        title: String(prestadorNome),
+        zIndex: 1
+    });
+
+
+    let labelDiv = document.createElement("div");
+    let glyphLabel = document.createElement("div");
+    glyphLabel.style = 'margin: auto;';
+    glyphLabel.classList.add('label-markers');
+    glyphLabel.innerText = identificador;
+    labelDiv.appendChild(glyphLabel);
+
+
+    var markerLabel = new google.maps.marker.AdvancedMarkerElement({
+        position: latLng,
+        draggable: false,
+        content: labelDiv,
+        gmpClickable: true,
+        map: map,
+        title: String(prestadorNome),
+        zIndex: -1
+    });
+
+    var markersArr = [marker, markerLabel];
+
+    markersArr = createInfoWindow_mapa(markersArr, prestadorNome, PrestadorIDCrypto, celular, veiculo, placa, foto, quantidadeSolicitacao, solicitacoesPrestador, ultimaAtualizacao, quantidadeServicos, servicosPrestador, telaDetalhe, projetoUrl, idioma);
+
+    return markersArr;
+    //return marker;
+}
+
+function updateMarkerPrestador_mapa(markerArr, geolocalizacaoID, prestadorID, latLng, prestadorNome, PrestadorIDCrypto, celular, veiculo, placa, foto, quantidadeSolicitacao, solicitacoesPrestador, ultimaAtualizacao, quantidadeServicos, servicosPrestador, online, identificador, semInternet, telaDetalhe, projetoUrl, idioma) {
+    var image = createAdvancedMarkerImage_mapa(quantidadeSolicitacao, online, semInternet);
+
+    var marker = markerArr[0];
+    var markerLabel = markerArr[1];
+
+    //marker.setMap(null);
+    marker.map = null;
+    markerLabel.map = null;
+    //marker.setPosition(latLng);
+    //marker.position = { lat: 14.53546539778815, lng: 120.98422872277972 }
+    marker.position = latLng;
+    markerLabel.position = latLng;
+
+
+    let glyphDiv = document.createElement("div");
+    glyphDiv.style = 'text-align: center; padding-bottom: 26px;';
+    glyphDiv.appendChild(image);
+    //glyphDiv.appendChild(glyphLabel);
+    marker.content = glyphDiv;
+
+    let labelDiv = document.createElement("div");
+    let glyphLabel = document.createElement("div");
+    glyphLabel.style = 'margin: auto;';
+    glyphLabel.classList.add('label-markers');
+    glyphLabel.innerText = identificador;
+    labelDiv.appendChild(glyphLabel);
+    markerLabel.content = labelDiv;
+
+    //marker.setMap(map);
+    marker.map = map;
+    markerLabel.map = map;
+
+    // replace the element with a copy of itself
+    // and nuke all the event listeners
+    //marker.replaceWith(marker.cloneNode(true));
+    //markerLabel.replaceWith(markerLabel.cloneNode(true));
+
+    //var listener = hashMapListener.get(PrestadorIDCrypto);
+    //removeEventListener('gmp-click', listener);
+    //hashMapListener.remove(PrestadorIDCrypto);
+
+    var newMarkersArr = [marker, markerLabel];
+
+    newMarkersArr = createInfoWindow_mapa(newMarkersArr, prestadorNome, PrestadorIDCrypto, celular, veiculo, placa, foto, quantidadeSolicitacao, solicitacoesPrestador, ultimaAtualizacao, quantidadeServicos, servicosPrestador, telaDetalhe, projetoUrl, idioma);
+
+    return newMarkersArr;
+}
+
+function createAdvancedMarkerImage_mapa(quantidadeSolicitacao, online, semInternet) {
+
+    //console.log("### iniciou createMarkerImage");
+
+    var nomeImagem = urlSA;
+
+    if (!online && quantidadeSolicitacao == 0 && !semInternet)
+        nomeImagem += "imagens/pin-cinza.png";
+    else if (semInternet && quantidadeSolicitacao == 0) {
+        nomeImagem += "imagens/pin-amarelo.png";
+    } else if (online && quantidadeSolicitacao == 0) {
+        nomeImagem += "imagens/pin-verde.png";
+    } else if (quantidadeSolicitacao > 0) {
+        nomeImagem += "imagens/pin-vermelho.png";
+    }
+    ///*else {
+    //    nomeImagem = "./images/pin-laranja.png";
+    //}*/
+    ////console.log("### nomeImagem: " + nomeImagem);
+
+    // A marker with a with a URL pointing to a PNG.
+    const image = document.createElement("img");
+    image.src = nomeImagem;
+    image.height = "48";
+    image.width = "30";
+    return image;
+}
+
+function openInfoWindow(e) {
+    this.customInfoWindow.open(this.map, this);
+}
+
+function createInfoWindow_mapa(markerArr, prestadorNome, PrestadorIDCrypto, celular, veiculo, placa, foto, quantidadeSolicitacao, solicitacoesPrestador, ultimaAtualizacao, quantidadeServicos, servicosPrestador, telaDetalhe, projetoUrl, idioma) {
+
+    contentString = "";
+    if (idioma == "es-ES")
+        contentString = infoWindowHtml_mapaEspanhol(prestadorNome, PrestadorIDCrypto, celular, veiculo, placa, foto, quantidadeSolicitacao, solicitacoesPrestador, ultimaAtualizacao, quantidadeServicos, servicosPrestador, telaDetalhe, projetoUrl);
+    else
+        contentString = infoWindowHtml_mapa(prestadorNome, PrestadorIDCrypto, celular, veiculo, placa, foto, quantidadeSolicitacao, solicitacoesPrestador, ultimaAtualizacao, quantidadeServicos, servicosPrestador, telaDetalhe, projetoUrl);
+
+    var infowindow = new google.maps.InfoWindow({
+        content: contentString
+    });
+
+    //google.maps.event.clearListeners(marker, 'click');
+    //google.maps.event.addListener(marker, 'click', function () {
+    //    infowindow.open(map, marker);
+    //});
+
+    // Add a click listener for each marker, and set up the info window.
+    //marker.addListener("click", ({ domEvent, latLng }) => {
+
+    //markerArr[0].addListener("gmp-click", function () {
+    //    //const { target } = domEvent;
+    //    infowindow.open(markerArr[0].map, markerArr[0]);
+    //});
+
+    //var eventListener =
+    //    function () {
+    //        //const { target } = domEvent;
+    //        infowindow.open(markerArr[0].map, markerArr[0]);
+    //    };
+    markerArr[0].customInfoWindow = infowindow;
+
+    markerArr[0].addEventListener(
+        'gmp-click', openInfoWindow
+    );
+
+
+    //markerArr[1].addListener("gmp-click", function () {
+    //    //const { target } = domEvent;
+    //    //infowindow.open(markerArr[1].map, markerArr[0]);
+    //    markerArr[0].gmp-click.apply(markerArr[0]);
+    //});
+    markerArr[1].customInfoWindow = infowindow;
+    markerArr[1].addEventListener(
+        'gmp-click', openInfoWindow
+    );
+
+    return markerArr;
+}
+
+function SolicitacaoDetalhe_mapa(SolicitacaoIDCrypto) {
+    document.location.href = "../../" + projetoUrl + "/SolicitacaoDetalhe/" + SolicitacaoIDCrypto;
+    return;
+}
+
+function infoWindowHtml_mapa(prestadorNome, PrestadorIDCrypto, celular, veiculo, placa, foto, quantidadeSolicitacao, solicitacoesPrestador, ultimaAtualizacao, quantidadeServicos, servicosPrestador, telaDetalhe, projetoUrl) {
+    var contentString = "";
+
+    contentString = contentString +
+        '<html>' +
+        '   <head>' +
+        '       <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">' +
+        '       <link rel="stylesheet" src="../../bower_components/bootstrap/dist/css/bootstrap.min.css">' +
+        '       <link rel="stylesheet" src="../../bower_components/font-awesome/css/font-awesome.min.css">' +
+        '       <link rel="stylesheet" src="../../bower_components/Ionicons/css/ionicons.min.css">' +
+        '       <link rel="stylesheet" src="../../bower_components/bootstrap-daterangepicker/daterangepicker.css">' +
+        '       <link rel="stylesheet" src="../../bower_components/bootstrap-datepicker/dist/css/bootstrap-datepicker.min.css">' +
+        '       <link rel="stylesheet" src="../../plugins/iCheck/all.css">' +
+        '       <link rel="stylesheet" src="../../bower_components/bootstrap-colorpicker/dist/css/bootstrap-colorpicker.min.css">' +
+        '       <link rel="stylesheet" src="../../plugins/timepicker/bootstrap-timepicker.min.css">' +
+        '       <link rel="stylesheet" src="../../bower_components/select2/dist/css/select2.min.css">' +
+        '       <link rel="stylesheet" src="../../dist/css/AdminLTE.min.css">' +
+        '   </head>' +
+        '   <body>' +
+        '       <div class="col-xs-12 nopadding nomargin">' +
+        '           <div class="col-xs-5 nopadding nomargin">' +
+        '               <div class="col-xs-12 nopadding nomargin">' +
+        '                   <img class="img-thumbnail img-circle img-responsive" src="' + foto + '" style="width: 100px; height: 100px; float: left; " />' +
+        '               </div>' +
+        '               <div class="col-xs-12">';
+    if ((projetoUrl !== undefined) && (projetoUrl !== null) && (projetoUrl !== ""))
+        contentString = contentString + '                   Nome: <a href="../../' + projetoUrl + '/CadastrarPrestadores/' + PrestadorIDCrypto + '" target="_blank">' + prestadorNome + '</a>';
+    else
+        contentString = contentString + '                   Nome: <a href="../../CadastrarPrestadores/' + PrestadorIDCrypto + '" target="_blank">' + prestadorNome + '</a>';
+
+    contentString = contentString +
+        '               </div>' +
+        '               <div class="col-xs-12">' +
+        '                   <strong> Celular: ' + celular +
+        '               </div>' +
+        '               <div class="col-xs-12">' +
+        '                   <strong> Veiculo: ' + veiculo +
+        '               </div>' +
+        '               <div class="col-xs-12">' +
+        '                   <strong> Placa: ' + placa +
+        '               </div>' +
+        '               <div class="col-xs-12">' +
+        '                   <strong> U.Atual: ' + ultimaAtualizacao +
+        '               </div>' +
+        '           </div>' +
+
+        //inicio - lista de serviços
+        '           <div class="col-xs-7">' +
+        '               <div class="box">' +
+        '                   <div class="box-header"> ' +
+        '                       <h3 class="box-title">Serviços</h3>' +
+        '                   </div>' +
+        '                   <div class="box-body">';
+    if (quantidadeServicos > 0) {
+        contentString = contentString +
+            '                       <table class="tableMap table-hover table-striped" style="width:100%" >' +
+            '                           <thead style="text-align:center"> ' +
+            '                               <tr>' +
+            '                                   <th>Serviços</th>' +
+            '                               </tr>' +
+            '                           </thead>' +
+            '                           <tbody>';
+        for (var j = 0, len = servicosPrestador.length; j < len; j++) {
+            var dats = servicosPrestador[j];
+            contentString = contentString + '   <tr>' +
+                '                                 <td>' + dats.servicoNome + '</td>' +
+                '                               <tr>';
+        }
+        contentString = contentString +
+            '                           <tbody>' +
+            '                       </table>';
+    };
+    contentString = contentString +
+        '                   </div>' +
+        '               </div>' +
+        '           </div>' +
+        //fim - lista de serviços
+
+        '           <div class="col-xs-12 nopadding nomargin">' +
+        '               <div class="box">' +
+        '                   <div class="box-header"> ' +
+        '                       <h3 class="box-title">Solicitações</h3>' +
+        '                   </div>' +
+        '                   <div class="box-body">';
+    if (quantidadeSolicitacao > 0) {
+        contentString = contentString +
+            '                       <table border="0" class="tableMap table-hover table-striped" style="width:100%" >' +
+            '                           <thead style="text-align:center" > ' +
+            '                               <tr>' +
+            '                                   <th rowspan="2" style="text-align:center">N. Pedido</th>' +
+            '                                   <th rowspan="2" style="text-align:center">Hr pedido</th>' +
+            '                                   <th rowspan="2" style="text-align:center">End. Orig.</th>' +
+            '                                   <th rowspan="2" style="text-align:center">Cliente</th>' +
+            '                                   <th rowspan="2" style="text-align:center">Serviço</th>' +
+            '                                   <th rowspan="2" style="text-align:center">Status</th>' +
+            '                                   <th rowspan="2" style="text-align:center">Filial</th>' +
+            '                                   <th rowspan="2" style="text-align:center">Região</th>' +
+            '                                   <th colspan="2" style="text-align:center">Origem Passageiro</th>' +
+            '                                   <th rowspan="2" style="text-align:center"> </th>' +
+            '                               </tr>' +
+            '                               <tr>' +
+            '                                   <th style="text-align:center">Tempo (Min.)</th>' +
+            '                                   <th style="text-align:center">Distância (km)</th>' +
+            '                               </tr>' +
+            '                           </thead>' +
+            '                           <tbody style="text-align:center">';
+        for (var i = 0, length = solicitacoesPrestador.length; i < length; i++) {
+            var data = solicitacoesPrestador[i];
+            //var strURL = 'document.location.href="../../SolicitacaoDetalhe/' + data.SolicitacaoIDCrypto + '"';
+            var strURL;
+            if (telaDetalhe == null || telaDetalhe == "")
+                strURL = "window.open('../../SolicitacaoDetalhe/" + data.solicitacaoIDCrypto + "', '_blank')";
+            else
+                strURL = "window.open('../../" + telaDetalhe + "/" + data.solicitacaoIDCrypto + "', '_blank')";
+
+            contentString = contentString + '   <tr>' +
+                '                                   <td>' + data.solicitacaoID + '</td>' +
+                '                                   <td>' + data.horaSolicitacao + '</td>' +
+                '                                   <td>' + data.origemEndereco + '</td>' +
+                '                                   <td>' + data.clienteNome + '</td>' +
+                '                                   <td>' + data.servicoNome + '</td>' +
+                '                                   <td>' + data.statusSolicitacaoDesc + '</td>' +
+                '                                   <td>' + data.filialNome + '</td>' +
+                '                                   <td>' + data.regiaoNome + '</td>' +
+                '                                   <td>' + data.tempoAtePassageiro + '</td>' +
+                '                                   <td>' + data.distanciaAtePassageiro + '</td>' +
+                '                                   <td><button type="button" class="btn btn-info btn-small" onclick="' + strURL + ';"><i class="fa fa-edit"></i></button></td>' +
+                '                               <tr>';
+        }
+        contentString = contentString +
+            '                           <tbody>' +
+            '                       </table>';
+    } else {
+
+        contentString = contentString + ' Sem Solicitações ';
+    };
+    contentString = contentString +
+        '                   <div>' +
+        '                   </div>' +
+        '                   </div>' +
+        '               </div>' +
+        '           </div>' +
+        '       </div>' +
+        '   </body>' +
+        '</html>';
+
+    return contentString;
+}
+
+function infoWindowHtml_mapaEspanhol(prestadorNome, PrestadorIDCrypto, celular, veiculo, placa, foto, quantidadeSolicitacao, solicitacoesPrestador, ultimaAtualizacao, quantidadeServicos, servicosPrestador, telaDetalhe, projetoUrl) {
+    var contentString = "";
+
+    contentString = contentString +
+        '<html>' +
+        '   <head>' +
+        '       <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">' +
+        '       <link rel="stylesheet" href="../../bower_components/bootstrap/dist/css/bootstrap.min.css">' +
+        '       <link rel="stylesheet" href="../../bower_components/font-awesome/css/font-awesome.min.css">' +
+        '       <link rel="stylesheet" href="../../bower_components/Ionicons/css/ionicons.min.css">' +
+        '       <link rel="stylesheet" href="../../bower_components/bootstrap-daterangepicker/daterangepicker.css">' +
+        '       <link rel="stylesheet" href="../../bower_components/bootstrap-datepicker/dist/css/bootstrap-datepicker.min.css">' +
+        '       <link rel="stylesheet" href="../../plugins/iCheck/all.css">' +
+        '       <link rel="stylesheet" href="../../bower_components/bootstrap-colorpicker/dist/css/bootstrap-colorpicker.min.css">' +
+        '       <link rel="stylesheet" href="../../plugins/timepicker/bootstrap-timepicker.min.css">' +
+        '       <link rel="stylesheet" href="../../bower_components/select2/dist/css/select2.min.css">' +
+        '       <link rel="stylesheet" href="../../dist/css/AdminLTE.min.css">' +
+        '       <!--<link rel="stylesheet" href="../../dist/css/CustomCSS.css">-->' +
+        '   </head>' +
+        '   <body>' +
+        '       <div class="col-xs-12 nopadding nomargin">' +
+        '           <div class="col-xs-5 nopadding nomargin">' +
+        '               <div class="col-xs-12 nopadding nomargin">' +
+        '                   <img class="img-thumbnail img-circle img-responsive" src="' + foto + '" style="width: 100px; height: 100px; float: left; " />' +
+        '               </div>' +
+        '               <div class="col-xs-12">';
+    if ((projetoUrl !== undefined) && (projetoUrl !== null) && (projetoUrl !== ""))
+        contentString = contentString + '                   Nombre: <a href="../../' + projetoUrl + '/CadastrarPrestadores/' + PrestadorIDCrypto + '" target="_blank">' + prestadorNome + '</a>';
+    else
+        contentString = contentString + '                   Nombre: <a href="../../CadastrarPrestadores/' + PrestadorIDCrypto + '" target="_blank">' + prestadorNome + '</a>';
+
+    contentString = contentString +
+        '               </div>' +
+        '               <div class="col-xs-12">' +
+        '                   <strong> Móvil: ' + celular +
+        '               </div>' +
+        '               <div class="col-xs-12">' +
+        '                   <strong> Vehículo: ' + veiculo +
+        '               </div>' +
+        '               <div class="col-xs-12">' +
+        '                   <strong> Nº Matrícula: ' + placa +
+        '               </div>' +
+        '               <div class="col-xs-12">' +
+        '                   <strong> U. Atuali.: ' + ultimaAtualizacao +
+        '               </div>' +
+        '           </div>' +
+
+        //inicio - lista de serviços
+        '           <div class="col-xs-7">' +
+        '               <div class="box">' +
+        '                   <div class="box-header"> ' +
+        '                       <h3 class="box-title">Servicios</h3>' +
+        '                   </div>' +
+        '                   <div class="box-body">';
+    if (quantidadeServicos > 0) {
+        contentString = contentString +
+            '                       <table class="tableMap table-hover table-striped" style="width:100%" >' +
+            '                           <thead style="text-align:center"> ' +
+            '                               <tr>' +
+            '                                   <th>Servicios</th>' +
+            '                               </tr>' +
+            '                           </thead>' +
+            '                           <tbody>';
+        for (var j = 0, len = servicosPrestador.length; j < len; j++) {
+            var dats = servicosPrestador[j];
+            contentString = contentString + '   <tr>' +
+                '                                 <td>' + dats.servicoNome + '</td>' +
+                '                               <tr>';
+        }
+        contentString = contentString +
+            '                           <tbody>' +
+            '                       </table>';
+    };
+    contentString = contentString +
+        '                   </div>' +
+        '               </div>' +
+        '           </div>' +
+        //fim - lista de serviços
+
+        '           <div class="col-xs-12 nopadding nomargin">' +
+        '               <div class="box">' +
+        '                   <div class="box-header"> ' +
+        '                       <h3 class="box-title">Pedidos</h3>' +
+        '                   </div>' +
+        '                   <div class="box-body">';
+    if (quantidadeSolicitacao > 0) {
+        contentString = contentString +
+            '                       <table border="0" class="tableMap table-hover table-striped" style="width:100%" >' +
+            '                           <thead style="text-align:center" > ' +
+            '                               <tr>' +
+            '                                   <th rowspan="2" style="text-align:center">N. Pedido</th>' +
+            '                                   <th rowspan="2" style="text-align:center">Hr Pedido</th>' +
+            '                                   <th rowspan="2" style="text-align:center">End. Orig.</th>' +
+            '                                   <th rowspan="2" style="text-align:center">Cliente</th>' +
+            '                                   <th rowspan="2" style="text-align:center">Servicios</th>' +
+            '                                   <th rowspan="2" style="text-align:center">Status</th>' +
+            '                                   <th rowspan="2" style="text-align:center">Sucursale</th>' +
+            '                                   <th rowspan="2" style="text-align:center">Regione</th>' +
+            '                                   <th colspan="2" style="text-align:center">Origen Pasajero</th>' +
+            '                                   <th rowspan="2" style="text-align:center"> </th>' +
+            '                               </tr>' +
+            '                               <tr>' +
+            '                                   <th style="text-align:center">Tiempo (Min.)</th>' +
+            '                                   <th style="text-align:center">Distancia (km)</th>' +
+            '                               </tr>' +
+            '                           </thead>' +
+            '                           <tbody style="text-align:center">';
+        for (var i = 0, length = solicitacoesPrestador.length; i < length; i++) {
+            var data = solicitacoesPrestador[i];
+            //var strURL = 'document.location.href="../../SolicitacaoDetalhe/' + data.SolicitacaoIDCrypto + '"';
+            var strURL;
+            if (telaDetalhe == null || telaDetalhe == "")
+                strURL = "window.open('../../SolicitacaoDetalhe/" + data.solicitacaoIDCrypto + "', '_blank')";
+            else
+                strURL = "window.open('../../" + telaDetalhe + "/" + data.solicitacaoIDCrypto + "', '_blank')";
+
+            contentString = contentString + '   <tr>' +
+                '                                   <td>' + data.solicitacaoID + '</td>' +
+                '                                   <td>' + data.horaSolicitacao + '</td>' +
+                '                                   <td>' + data.origemEndereco + '</td>' +
+                '                                   <td>' + data.clienteNome + '</td>' +
+                '                                   <td>' + data.servicoNome + '</td>' +
+                '                                   <td>' + data.statusSolicitacaoDesc + '</td>' +
+                '                                   <td>' + data.filialNome + '</td>' +
+                '                                   <td>' + data.regiaoNome + '</td>' +
+                '                                   <td>' + data.tempoAtePassageiro + '</td>' +
+                '                                   <td>' + data.distanciaAtePassageiro + '</td>' +
+                '                                   <td><button type="button" class="btn btn-info btn-small" onclick="' + strURL + ';"><i class="fa fa-edit"></i></button></td>' +
+                '                               <tr>';
+        }
+        contentString = contentString +
+            '                           <tbody>' +
+            '                       </table>';
+    } else {
+
+        contentString = contentString + ' Sin Pedidos ';
+    };
+    contentString = contentString +
+        '                   <div>' +
+        '                   </div>' +
+        '                   </div>' +
+        '               </div>' +
+        '           </div>' +
+        '       </div>' +
+        '   </body>' +
+        '</html>';
+
+    return contentString;
+}
+
+function googleMap_listarPrestadores(objMapa, limparMapa, projetoUrl, idioma) {
+
+    //alert("1");
+    //console.log("### iniciou googleMap_listarPrestadores");
+
+    try {
+        if (typeof objMapa.mapaGeolocalizacaoPrestadores !== 'undefined') {
+            //alert("2");
+            //console.log("### 1");
+
+            var dadosMapa = objMapa.mapaGeolocalizacaoPrestadores;
+            //alert("3");
+            //console.log("### 2");
+            var telaDetalhe = objMapa.telaDetalhe;
+            //alert("4");
+            //console.log("### 3");
+
+            console.log('listar ' + dadosMapa.length + ' ' + markersPrestador.length);
+
+            while (markersPrestador.length) {
+                try {
+                    //markersPrestador.pop().setMap(null);
+                    var markerArr = markersPrestador.pop();
+                    markerArr[0].map = null;
+                    markerArr[1].map = null;
+                    //if (showInfoWindow !== 'undefined' && showInfoWindow != '') {
+                    //    console.log('remove listener ' + markersPrestador.prestadorIDCrypto + ' ' + markerArr[0].removeEventListener('gmp-click', showInfoWindow));
+                    //    console.log('remove listener ' + markersPrestador.prestadorIDCrypto + ' ' + markerArr[1].removeEventListener('gmp-click', showInfoWindow));
+                    //}
+                }
+                catch (e) {
+                    console.log(e);
+                }
+            };
+
+            //while (hashMapListener.length) {
+            //    try {
+            //        //markersPrestador.pop().setMap(null);
+            //        var listener = hashMapListener.pop();
+            //        removeEventListener('gmp-click', listener);
+            //    }
+            //    catch (e) {
+            //        console.log(e);
+            //    }
+            //};
+
+
+            if (flagBounds || limparMapa) {
+                flagBounds = false;
+                // Re-criar os markers
+                hashMap = new Map();
+                //alert("5");
+                //console.log("### 4");
+
+                //google.maps.Map.prototype.clearMarkers = function () {
+                //    for (var i = 0; i < this.marker.length; i++) {
+                //        this.marker[i].setMap(null);
+                //    }
+                //    this.marker = new Array();
+                //};
+
+                //alert("6");
+                //console.log("### 5 markersPrestador.length");
+
+                var bounds = new google.maps.LatLngBounds();
+                //alert("7");
+                //alert(dadosMapa.length);
+                //console.log("### 6 bounds");
+
+                var timeOut = 0;
+                var checkIsMapLoaded = function () {
+                    if (map === 'undefined' || map === '' || map.tilesloading !== false) {
+                        console.log('check ' + timeOut);
+                        timeOut += 50;
+
+                        if (timeOut < 5000) {
+                            setTimeout(checkIsMapLoaded, timeOut); // check again
+                        }
+                        else {
+                            console.log('check end');
+                            // se cair aqui, é incialização e o mapa demorou demais para carregar (lentidão, ou talvez problema na chave da API ou na conta)
+                            return false;
+                        }
+                    }
+                    else {
+                        console.log('check ok ' + timeOut);
+                        for (var i = 0, length = dadosMapa.length; i < length; i++) {
+                            try {
+
+                                var data = dadosMapa[i],
+                                    latLng = new google.maps.LatLng(parseFloat(data.latitude), parseFloat(data.longitude));
+
+                                //console.log("### data");
+
+                                bounds.extend(latLng);
+                                //console.log("### bounds.extend");
+
+                                var markersPrestadorArr = createMarkerPrestador_mapa(data.geolocalizacaoID, data.prestadorID, latLng, data.prestadorNome, data.prestadorIDCrypto, data.celular, data.veiculo, data.placa, data.foto, data.quantidadeSolicitacao, data.solicitacoesPrestador, data.ultimaAtualizacao, data.quantidadeServicos, data.lstServicosPrestadores, data.ativo, data.identificador, data.semInternet, telaDetalhe, projetoUrl, idioma);
+
+                                //console.log("### createMarkerPrestador");
+                                markersPrestadorArr.atualizado = false;
+                                markersPrestadorArr.geolocalizacaoID = data.geolocalizacaoID;
+                                markersPrestadorArr.prestadorIDCrypto = data.prestadorIDCrypto;
+                                hashMap.set(markersPrestadorArr.geolocalizacaoID, markersPrestadorArr);
+                                //console.log("### hashMap");
+
+                                markersPrestador.push(markersPrestadorArr);
+                                //alert("ok")
+                                //console.log("### markersPrestador");
+
+                            } catch (e) {
+                                console.log(e);
+                            }
+                        }
+                        if (typeof map.fitBounds !== 'undefined') {
+                            map.fitBounds(bounds);
+                        }
+                    }
+                }
+                checkIsMapLoaded();
+                //console.log("### 7 map.fitBounds(bounds);");
+
+            }
+            else if (map === 'undefined' || map === '' || map.tilesloading !== false) {
+                // se cair aqui, é step de atualização e o mapa não carregou por algum motivo (lentidão, ou talvez problema na chave da API ou na conta)
+                return false;
+            }
+            else {
+                //alert("8");
+                // Atualizar os markers
+                //var marker;
+
+                //var bounds = new google.maps.LatLngBounds();
+
+                for (var i = 0, length = dadosMapa.length; i < length; i++) {
+                    try {
+                        var data = dadosMapa[i],
+                            latLng = new google.maps.LatLng(parseFloat(data.latitude), parseFloat(data.longitude));
+
+                        //bounds.extend(latLng);
+
+                        //latLngDe = new google.maps.LatLng("-22.7365311", "-47.2857673");
+                        var markersPrestadorArr = hashMap.get(data.geolocalizacaoID);
+
+                        if (markersPrestadorArr == null) {
+                            markersPrestadorArr = createMarkerPrestador_mapa(data.geolocalizacaoID, data.prestadorID, latLng, data.prestadorNome, data.prestadorIDCrypto, data.celular, data.veiculo, data.placa, data.foto, data.quantidadeSolicitacao, data.solicitacoesPrestador, data.ultimaAtualizacao, data.quantidadeServicos, data.lstServicosPrestadores, data.ativo, data.identificador, data.semInternet, telaDetalhe, projetoUrl, idioma);
+                            markersPrestadorArr.atualizado = true;
+                            markersPrestadorArr.geolocalizacaoID = data.geolocalizacaoID;
+                            markersPrestadorArr.prestadorIDCrypto = data.prestadorIDCrypto;
+                            hashMap.set(markersPrestadorArr.geolocalizacaoID, markersPrestadorArr);
+                        } else {
+                            markersPrestadorArr.atualizado = true;
+                            markersPrestadorArr = updateMarkerPrestador_mapa(markersPrestadorArr, data.geolocalizacaoID, data.prestadorID, latLng, data.prestadorNome, data.prestadorIDCrypto, data.celular, data.veiculo, data.placa, data.foto, data.quantidadeSolicitacao, data.solicitacoesPrestador, data.ultimaAtualizacao, data.quantidadeServicos, data.lstServicosPrestadores, data.ativo, data.identificador, data.semInternet, telaDetalhe, projetoUrl, idioma);
+                        }
+                        markersPrestador.push(markersPrestadorArr);
+
+                    } catch (e) {
+                        console.log(e);
+                    }
+                }
+
+                var newHashMap = new Map();
+                while (hashMap.length) {
+                    try {
+                        var markersPrestadorArr = hashMap.pop();
+                        if (markersPrestadorArr.atualizado) {
+                            markersPrestadorArr[0].map = null;
+                            markersPrestadorArr[1].map = null;
+                        }
+                        else {
+                            markersPrestadorArr.atualizado = false;
+                            newHashMap.set(markersPrestadorArr.geolocalizacaoID, markersPrestadorArr);
+                        }
+                    }
+                    catch (e) {
+                        console.log(e);
+                    }
+                };
+
+                hashMap = newHashMap;
+            }
+        }
+
+        //console.log("### finalizou googleMap_listarPrestadores");
+
+        return true;
+
+    } catch (e) {
+        console.log(e);
+        return false;
+    }
+}
