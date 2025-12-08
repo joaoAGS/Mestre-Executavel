@@ -62,42 +62,52 @@ def verificar_atualizacao():
             
             resposta_exe = requests.get(URL_EXECUTAVEL, verify=False)
             
-            nome_novo = os.path.join(diretorio_base, "Mestre_Novo.exe")
+            # Salva como Mestre_Novo.exe na mesma pasta
+            nome_novo_caminho = os.path.join(diretorio_base, "Mestre_Novo.exe")
             
-            with open(nome_novo, 'wb') as f:
+            with open(nome_novo_caminho, 'wb') as f:
                 f.write(resposta_exe.content)
             
             print("✅ Download concluído! O robô vai reiniciar em 5 segundos...")
             
-            # --- CORREÇÃO DE ACENTOS (UTF-8) ---
-            nome_exe_original = os.path.basename(exe_atual)
+            # Pega apenas o NOME do arquivo (ex: Mestre.exe), sem o caminho completo
+            nome_exe_apenas = os.path.basename(exe_atual)
             
+            # Script BAT Otimizado para pastas com acento (Robô)
+            # Ele entra na pasta (cd) e usa nomes curtos para evitar erros
             bat_script = f"""
             @echo off
             @chcp 65001 >nul
-            title Atualizando Robo...
-            echo Aguardando fechamento do aplicativo...
+            title Atualizando...
+            
+            :: Entra na pasta do robo para evitar erros de caminho longo
+            cd /d "{diretorio_base}"
+            
+            echo Aguardando fechamento...
             timeout /t 3 /nobreak >nul
             
             :TENTAR_MOVER
-            move /y "{nome_novo}" "{exe_atual}"
+            move /y "Mestre_Novo.exe" "{nome_exe_apenas}"
             if errorlevel 1 (
-                echo Arquivo ainda preso. Tentando de novo em 1 seg...
+                echo Arquivo preso. Tentando de novo...
                 timeout /t 1 /nobreak >nul
                 goto TENTAR_MOVER
             )
             
-            echo Atualizacao concluida! Iniciando...
-            start "" "{exe_atual}"
-            del "%~f0"
+            echo Sucesso! Iniciando...
+            start "" "{nome_exe_apenas}"
+            
+            :: Auto-destruição segura (evita o erro "arquivo não encontrado")
+            start /b "" cmd /c del "%~f0"&exit /b
             """
             
             bat_path = os.path.join(diretorio_base, "atualizador.bat")
             
-            # FORÇA A CRIAÇÃO DO ARQUIVO EM UTF-8 PARA LER O "ô"
+            # Grava em UTF-8
             with open(bat_path, "w", encoding="utf-8") as bat:
                 bat.write(bat_script)
                 
+            # Executa
             subprocess.Popen(bat_path, shell=True)
             time.sleep(1)
             sys.exit()
