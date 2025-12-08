@@ -16,7 +16,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 # ==============================================================================
 # 🔄 SISTEMA DE AUTO-UPDATE
 # ==============================================================================
-VERSAO_ATUAL = "1.2"
+VERSAO_ATUAL = "1.4"
 URL_VERSAO = "https://raw.githubusercontent.com/joaoAGS/Mestre-Executavel/refs/heads/main/versao.txt"
 URL_EXECUTAVEL = "https://github.com/joaoAGS/Mestre-Executavel/raw/refs/heads/main/Mestre.exe"
 
@@ -109,7 +109,7 @@ def verificar_atualizacao():
         # Continua o robô normalmente se der erro na internet
         
 def iniciar_driver():
-    print("🚀 Iniciando Robô Mestre (Com Cálculo de Perdas)...")
+    print("🚀 Iniciando Robô Mestre... (Com Cálculo de Perdas)...")
     options = webdriver.ChromeOptions()
     options.add_argument(f"user-data-dir={CAMINHO_PERFIL}")
     options.add_argument("--no-sandbox")

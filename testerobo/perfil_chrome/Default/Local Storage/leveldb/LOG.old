@@ -1,2 +1,3 @@
-2025/12/08-13:22:38.577 6b94 Creating DB C:\Users\joaoa\Downloads\Robô\Robô\testerobo\perfil_chrome\Default\Local Storage\leveldb since it was missing.
-2025/12/08-13:22:38.593 6b94 Reusing MANIFEST C:\Users\joaoa\Downloads\Robô\Robô\testerobo\perfil_chrome\Default\Local Storage\leveldb/MANIFEST-000001
+2025/12/08-13:28:17.609 3270 Reusing MANIFEST C:\Users\joaoa\Downloads\Robô\Robô\testerobo\perfil_chrome\Default\Local Storage\leveldb/MANIFEST-000001
+2025/12/08-13:28:17.614 3270 Recovering log #3
+2025/12/08-13:28:17.616 3270 Reusing old log C:\Users\joaoa\Downloads\Robô\Robô\testerobo\perfil_chrome\Default\Local Storage\leveldb/000003.log 
