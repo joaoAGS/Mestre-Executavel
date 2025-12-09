@@ -19,7 +19,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # ==============================================================================
 
 # --- AUTO-UPDATE ---
-VERSAO_ATUAL = "1.9.2"  # <--- LEMBRE DE MUDAR ISSO QUANDO GERAR ATUALIZAÇÃO
+VERSAO_ATUAL = "1.9.3"  # <--- LEMBRE DE MUDAR ISSO QUANDO GERAR ATUALIZAÇÃO
 URL_VERSAO = "https://raw.githubusercontent.com/joaoAGS/Mestre-Executavel/refs/heads/main/versao.txt"
 URL_EXECUTAVEL = "https://github.com/joaoAGS/Mestre-Executavel/raw/refs/heads/main/Mestre.exe"
 
@@ -115,7 +115,7 @@ def verificar_atualizacao():
 # ==============================================================================
 
 def iniciar_driver():
-    print("🚀 Iniciando Robô Mestre...")
+    print("🚀 Iniciando Robô Mestre")
     options = webdriver.ChromeOptions()
     options.add_argument(f"user-data-dir={CAMINHO_PERFIL}")
     options.add_argument("--no-sandbox")
